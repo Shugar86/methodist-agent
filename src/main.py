@@ -19,6 +19,7 @@ from rich.table import Table
 sys.path.insert(0, str(Path(__file__).parent))
 
 from core.config import Config, load_config, get_data_dir, get_output_dir, get_skills_dir, get_templates_dir
+from core.environment_check import run_environment_check
 from core.model_router import ModelRouter
 from core.context_manager import ContextManager
 from core.orchestrator import Orchestrator
@@ -126,11 +127,11 @@ def init(
     check: bool = typer.Option(False, "--check", help="Run environment check only"),
 ):
     """Initialize agent configuration."""
-    from core.environment_check import run_environment_check
-
     if check:
         report = run_environment_check()
         console.print(onboarding_env_report(report.to_user_string()))
+        if not report.all_good:
+            raise typer.Exit(code=1)
         raise typer.Exit()
 
     try:
