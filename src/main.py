@@ -1,0 +1,405 @@
+"""
+Main CLI entry point for Methodist Agent.
+Uses Typer for command-line interface.
+"""
+
+import shutil
+import sys
+from pathlib import Path
+from typing import Optional
+
+import typer
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+from rich.table import Table
+
+# Add src to path when running as a module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from core.config import Config, load_config, get_output_dir
+from core.model_router import ModelRouter
+from core.context_manager import ContextManager
+from core.orchestrator import Orchestrator
+
+app = typer.Typer(
+    name="methodist-agent",
+    help="🤖 AI-агент для помощи методистам учебных заведений",
+    add_completion=True,
+)
+console = Console()
+
+# Global state
+_config: Optional[Config] = None
+_model_router: Optional[ModelRouter] = None
+_context_manager: Optional[ContextManager] = None
+_orchestrator: Optional[Orchestrator] = None
+
+
+def get_config() -> Config:
+    """Get or load configuration."""
+    global _config
+    if _config is None:
+        _config = load_config()
+    return _config
+
+
+def get_model_router() -> ModelRouter:
+    """Get or create model router."""
+    global _model_router
+    if _model_router is None:
+        _model_router = ModelRouter(get_config())
+    return _model_router
+
+
+def get_context_manager() -> ContextManager:
+    """Get or create context manager."""
+    global _context_manager
+    if _context_manager is None:
+        _context_manager = ContextManager(get_config())
+    return _context_manager
+
+
+def get_orchestrator() -> Orchestrator:
+    """Get or create orchestrator."""
+    global _orchestrator
+    if _orchestrator is None:
+        _orchestrator = Orchestrator(
+            get_config(),
+            get_model_router(),
+            get_context_manager()
+        )
+    return _orchestrator
+
+
+def print_banner():
+    """Print welcome banner."""
+    banner = Text()
+    banner.append("🤖 ", style="bold cyan")
+    banner.append("Методист-Агент", style="bold blue")
+    banner.append(" v1.0.0\n", style="dim")
+    banner.append("Windows-first AI агент для учебных заведений\n", style="dim")
+    banner.append("─" * 50, style="dim")
+    console.print(Panel(banner, border_style="blue"))
+
+
+@app.command()
+def init(
+    config_path: Optional[str] = typer.Option(None, "--config", "-c", help="Path to config file")
+):
+    """Initialize agent configuration."""
+    config = load_config(config_path)
+    
+    # Create directories
+    from core.config import get_data_dir, get_templates_dir, get_skills_dir
+    get_data_dir(config)
+    templates_dir = get_templates_dir(config)
+    skills_dir = get_skills_dir(config)
+    get_output_dir(config)
+
+    # Copy bundled skills and templates if they exist
+    project_root = Path(__file__).parent.parent
+    bundled_skills = project_root / "skills"
+    bundled_templates = project_root / "templates"
+
+    if bundled_skills.exists():
+        shutil.copytree(bundled_skills, skills_dir, dirs_exist_ok=True)
+    if bundled_templates.exists():
+        shutil.copytree(bundled_templates, templates_dir, dirs_exist_ok=True)
+
+    console.print("✅ Агент инициализирован!")
+    console.print(f"📁 Данные: {get_data_dir(config)}")
+    console.print(f"📁 Шаблоны: {get_templates_dir(config)}")
+    console.print(f"📁 Skills: {get_skills_dir(config)}")
+    console.print(f"📁 Выходные файлы: {get_output_dir(config)}")
+
+
+@app.command()
+def chat(
+    message: Optional[str] = typer.Argument(None, help="Message to send to agent"),
+    no_approval: bool = typer.Option(False, "--no-approval", "-y", help="Skip approval gates"),
+):
+    """Chat with the agent."""
+    print_banner()
+    
+    orchestrator = get_orchestrator()
+    context_manager = get_context_manager()
+    
+    # Create session if none exists
+    if not context_manager._current_session:
+        context_manager.create_session("CLI Session")
+    
+    if message:
+        # Single message mode
+        _process_message(message, orchestrator, no_approval)
+    else:
+        # Interactive mode
+        console.print("\n💬 Интерактивный режим. Введите 'exit' или 'quit' для выхода.\n")
+        
+        while True:
+            try:
+                user_input = console.input("[bold green]Вы:[/bold green] ")
+                
+                if user_input.lower() in ["exit", "quit", "выход"]:
+                    console.print("👋 До свидания!")
+                    break
+                
+                if not user_input.strip():
+                    continue
+                
+                _process_message(user_input, orchestrator, no_approval)
+                
+            except KeyboardInterrupt:
+                console.print("\n👋 До свидания!")
+                break
+            except Exception as e:
+                console.print(f"[red]Ошибка: {e}[/red]")
+
+
+def _process_message(user_input: str, orchestrator: Orchestrator, no_approval: bool):
+    """Process a single user message."""
+    context_manager = get_context_manager()
+    
+    # Add user message to context
+    context_manager.add_message("user", user_input)
+    
+    # Create plan
+    with console.status("[bold blue]Анализирую запрос...[/bold blue]"):
+        plan = orchestrator.create_plan(user_input)
+    
+    # Present plan
+    console.print("\n" + orchestrator.present_plan(plan))
+    
+    # Approval gate
+    if plan.requires_approval and not no_approval:
+        approval = console.input("\n[bold yellow]Подтвердить выполнение? (y/n):[/bold yellow] ")
+        if approval.lower() not in ["y", "yes", "да", "д"]:
+            console.print("❌ План отклонён.")
+            orchestrator.reject_plan(plan)
+            return
+    
+    orchestrator.approve_plan(plan)
+    
+    # Execute plan
+    console.print("\n[bold green]▶ Выполняю план...[/bold green]\n")
+    
+    while not orchestrator.is_plan_complete(plan):
+        task = orchestrator.get_next_task(plan)
+        if not task:
+            break
+        
+        with console.status(f"[bold blue]{task.description}...[/bold blue]"):
+            result = _execute_task(task)
+        
+        orchestrator.mark_task_complete(task, result)
+        
+        if result:
+            console.print(f"  ✅ {task.description}")
+            if isinstance(result, str) and len(result) < 500:
+                console.print(f"     [dim]{result}[/dim]")
+        else:
+            console.print(f"  ⚠️ {task.description} — требуется внимание")
+    
+    # Show summary
+    console.print("\n" + orchestrator.get_plan_summary(plan))
+    
+    # Add assistant response to context
+    summary = orchestrator.get_plan_summary(plan)
+    context_manager.add_message("assistant", summary)
+
+
+def _execute_task(task):
+    """Execute a task using appropriate specialist."""
+    # This is a simplified version - in production, this would dispatch to actual agents
+    agent_name = task.agent
+    params = task.parameters
+    
+    try:
+        if agent_name == "document_specialist":
+            from agents.document_specialist import DocumentSpecialist
+            agent = DocumentSpecialist(get_config())
+            return agent.execute(task.type, params)
+        
+        elif agent_name == "pdf_reader":
+            from agents.pdf_reader import PDFReaderAgent
+            agent = PDFReaderAgent(get_config())
+            return agent.execute(task.type, params)
+        
+        elif agent_name == "web_search":
+            from agents.web_search import WebSearchAgent
+            agent = WebSearchAgent(get_config())
+            return agent.execute(task.type, params)
+        
+        elif agent_name == "adaptation_agent":
+            from agents.adaptation_agent import AdaptationAgent
+            agent = AdaptationAgent(get_config())
+            return agent.execute(task.type, params)
+        
+        else:
+            # General task - use LLM directly
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant for educational methodists."},
+                {"role": "user", "content": params.get("user_input", "")}
+            ]
+            response = get_model_router().chat(messages)
+            return response.content
+    
+    except ImportError as e:
+        return f"Агент {agent_name} ещё не реализован ({e}). Использую LLM..."
+    except Exception as e:
+        return f"Ошибка выполнения: {e}"
+
+
+@app.command()
+def create(
+    template: str = typer.Argument(..., help="Template name (curriculum, schedule, report, presentation)"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
+    subject: Optional[str] = typer.Option(None, "--subject", "-s", help="Subject name"),
+    hours: Optional[int] = typer.Option(None, "--hours", "-h", help="Total hours"),
+):
+    """Create a document from template."""
+    console.print(f"[bold blue]Создаю документ из шаблона: {template}[/bold blue]")
+    
+    params = {"template_name": template, "output": output, "subject": subject, "hours": hours}
+    
+    try:
+        from agents.document_specialist import DocumentSpecialist
+        agent = DocumentSpecialist(get_config())
+        result = agent.create_from_template(params)
+        console.print(f"[green]✅ Документ создан: {result}[/green]")
+    except Exception as e:
+        console.print(f"[red]❌ Ошибка: {e}[/red]")
+
+
+@app.command()
+def adapt(
+    input_file: str = typer.Argument(..., help="Input file to adapt"),
+    template: Optional[str] = typer.Option(None, "--template", "-t", help="New template to apply"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
+):
+    """Adapt an existing document to new requirements."""
+    console.print(f"[bold blue]Адаптирую документ: {input_file}[/bold blue]")
+    
+    params = {"input_file": input_file, "template": template, "output": output}
+    
+    try:
+        from agents.adaptation_agent import AdaptationAgent
+        agent = AdaptationAgent(get_config())
+        result = agent.adapt_document(params)
+        console.print(f"[green]✅ Документ адаптирован: {result}[/green]")
+    except Exception as e:
+        console.print(f"[red]❌ Ошибка: {e}[/red]")
+
+
+@app.command()
+def search(
+    query: str = typer.Argument(..., help="Search query"),
+    max_results: int = typer.Option(10, "--max", "-n", help="Maximum results"),
+):
+    """Search the web for methodological materials."""
+    console.print(f"[bold blue]🔍 Поиск: {query}[/bold blue]\n")
+    
+    try:
+        from agents.web_search import WebSearchAgent
+        agent = WebSearchAgent(get_config())
+        results = agent.search(query, max_results)
+        
+        table = Table(title="Результаты поиска")
+        table.add_column("#", style="cyan", width=3)
+        table.add_column("Заголовок", style="green")
+        table.add_column("URL", style="blue")
+        table.add_column("Описание", style="dim")
+        
+        for i, result in enumerate(results, 1):
+            table.add_row(
+                str(i),
+                result.get("title", "N/A")[:50],
+                result.get("url", "N/A")[:40],
+                result.get("snippet", "")[:60]
+            )
+        
+        console.print(table)
+    except Exception as e:
+        console.print(f"[red]❌ Ошибка поиска: {e}[/red]")
+
+
+@app.command()
+def pdf(
+    action: str = typer.Argument(..., help="Action: extract, convert, ocr"),
+    input_file: str = typer.Argument(..., help="Input PDF file"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
+):
+    """Process PDF files."""
+    console.print(f"[bold blue]📄 PDF: {action} — {input_file}[/bold blue]")
+    
+    params = {"action": action, "input_file": input_file, "output": output}
+    
+    try:
+        from agents.pdf_reader import PDFReaderAgent
+        agent = PDFReaderAgent(get_config())
+        result = agent.process(params)
+        console.print(f"[green]✅ Готово: {result}[/green]")
+    except Exception as e:
+        console.print(f"[red]❌ Ошибка: {e}[/red]")
+
+
+@app.command()
+def skills(
+    list_all: bool = typer.Option(False, "--list", "-l", help="List all skills"),
+    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
+):
+    """Manage skills."""
+    context_manager = get_context_manager()
+    
+    if list_all:
+        all_skills = context_manager.get_all_skills()
+        
+        table = Table(title="Доступные Skills")
+        table.add_column("Категория", style="cyan")
+        table.add_column("Название", style="green")
+        table.add_column("Триггеры", style="dim")
+        
+        for key, skill in all_skills.items():
+            if category and skill.category != category:
+                continue
+            triggers = ", ".join(skill.triggers[:3]) if skill.triggers else "—"
+            table.add_row(skill.category, skill.name, triggers)
+        
+        console.print(table)
+    else:
+        console.print("Используйте --list для просмотра skills")
+
+
+@app.command()
+def config(
+    show: bool = typer.Option(False, "--show", "-s", help="Show current config"),
+    edit: bool = typer.Option(False, "--edit", "-e", help="Edit config file"),
+):
+    """Manage configuration."""
+    config = get_config()
+    
+    if show:
+        console.print_json(config.model_dump_json())
+    elif edit:
+        config_path = Path.home() / ".methodist-agent" / "config.yaml"
+        console.print(f"Откройте файл в редакторе: {config_path}")
+    else:
+        console.print("Используйте --show или --edit")
+
+
+@app.command()
+def tray():
+    """Launch system tray application."""
+    console.print("[bold blue]🖥️ Запускаю System Tray...[/bold blue]")
+    
+    try:
+        from windows.tray_app import TrayApp
+        app = TrayApp(get_config())
+        app.run()
+    except Exception as e:
+        console.print(f"[red]❌ Ошибка запуска tray: {e}[/red]")
+        console.print("[dim]Убедитесь, что установлены все зависимости Windows[/dim]")
+
+
+if __name__ == "__main__":
+    app()
