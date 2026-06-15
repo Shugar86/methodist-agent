@@ -12,6 +12,7 @@ from typing import Optional
 # Progress
 # ------------------------------------------------------------------
 
+
 def progress_creating_document(template: str) -> str:
     return f"Создаю документ из шаблона: {template}"
 
@@ -31,6 +32,7 @@ def progress_pdf(action: str, path: str) -> str:
 # ------------------------------------------------------------------
 # Success
 # ------------------------------------------------------------------
+
 
 def success_document_created(path: str) -> str:
     return f"✅ Документ готов: {Path(path).name}"
@@ -52,6 +54,7 @@ def success_pdf_ready(path: str) -> str:
 # Errors
 # ------------------------------------------------------------------
 
+
 def error_template_not_found(path: Path) -> str:
     return (
         f"❌ Шаблон не найден: {path}\n"
@@ -68,10 +71,7 @@ def error_template_folder_empty(path: Path) -> str:
 
 
 def error_unsupported_format(fmt: str) -> str:
-    return (
-        f"❌ Неподдерживаемый формат: {fmt}\n"
-        "Поддерживаются: docx, xlsx, pptx."
-    )
+    return f"❌ Неподдерживаемый формат: {fmt}\nПоддерживаются: docx, xlsx, pptx."
 
 
 def error_no_office_fallback() -> str:
@@ -108,30 +108,23 @@ def error_generic(action: str, reason: str) -> str:
 # Empty / Info
 # ------------------------------------------------------------------
 
+
 def info_no_sessions() -> str:
-    return (
-        "Пока нет сохранённых диалогов. "
-        'Начните с команды «создай рабочую программу».'
-    )
+    return "Пока нет сохранённых диалогов. Начните с команды «создай рабочую программу»."
 
 
 def info_no_skills() -> str:
-    return (
-        "Skills не загружены. "
-        "Запустите инициализацию: methodist-agent init."
-    )
+    return "Skills не загружены. Запустите инициализацию: methodist-agent init."
 
 
 def info_no_search_results() -> str:
-    return (
-        "По запросу ничего не найдено. "
-        "Попробуйте уточнить тему или тип материала."
-    )
+    return "По запросу ничего не найдено. Попробуйте уточнить тему или тип материала."
 
 
 # ------------------------------------------------------------------
 # Onboarding
 # ------------------------------------------------------------------
+
 
 def onboarding_welcome() -> str:
     return (
@@ -144,7 +137,7 @@ def onboarding_welcome() -> str:
 def onboarding_first_step() -> str:
     return (
         "Начнём с создания первого документа? "
-        'Например: «создай рабочую программу по Базам данных, 144 часа».'
+        "Например: «создай рабочую программу по Базам данных, 144 часа»."
     )
 
 
@@ -160,6 +153,7 @@ def onboarding_env_report(report: str) -> str:
 # Approval
 # ------------------------------------------------------------------
 
+
 def approval_prompt() -> str:
     return "\nПодтвердить выполнение? (y/n): "
 
@@ -171,6 +165,7 @@ def approval_rejected() -> str:
 # ------------------------------------------------------------------
 # Status
 # ------------------------------------------------------------------
+
 
 def status_analyzing_request() -> str:
     return "Анализирую запрос…"
@@ -184,6 +179,7 @@ def status_executing_plan() -> str:
 # Chat
 # ------------------------------------------------------------------
 
+
 def chat_hint_exit() -> str:
     return "\n💬 Интерактивный режим. Введите 'exit' или 'quit' для выхода.\n"
 
@@ -195,6 +191,7 @@ def chat_goodbye() -> str:
 # ------------------------------------------------------------------
 # Info directories
 # ------------------------------------------------------------------
+
 
 def info_data_dir(path: str | Path) -> str:
     return f"📁 Данные: {path}"
@@ -229,6 +226,7 @@ def error_task_execution(reason: str) -> str:
 # Search results
 # ------------------------------------------------------------------
 
+
 def search_results_title() -> str:
     return "Результаты поиска"
 
@@ -253,6 +251,7 @@ def search_header_description() -> str:
 # Task status
 # ------------------------------------------------------------------
 
+
 def task_success(description: str) -> str:
     return f"  ✅ {description}"
 
@@ -265,6 +264,7 @@ def task_warning(description: str) -> str:
 # PDF
 # ------------------------------------------------------------------
 
+
 def error_pdf_processing(reason: str) -> str:
     return f"❌ Не удалось обработать PDF: {reason}"
 
@@ -272,6 +272,7 @@ def error_pdf_processing(reason: str) -> str:
 # ------------------------------------------------------------------
 # Workspace
 # ------------------------------------------------------------------
+
 
 def workspace_title() -> str:
     return "Методист-Агент"
