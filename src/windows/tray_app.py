@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 try:
     import pystray
     from PIL import Image, ImageDraw, ImageFont
+
     _HAS_PYSTRAY = True
 except ImportError:
     _HAS_PYSTRAY = False
@@ -33,6 +34,7 @@ except ImportError:
 try:
     import tkinter as tk
     from tkinter import simpledialog, messagebox
+
     _HAS_TKINTER = True
 except ImportError:
     _HAS_TKINTER = False
@@ -41,6 +43,7 @@ except ImportError:
 
 class TrayAppError(Exception):
     """Ошибка System Tray приложения."""
+
     pass
 
 
@@ -55,8 +58,10 @@ class TrayApp:
         self._workspace = None
 
         if not _HAS_PYSTRAY:
-            raise TrayAppError("Для работы System Tray необходимо установить pystray и PIL: "
-                               "pip install pystray pillow")
+            raise TrayAppError(
+                "Для работы System Tray необходимо установить pystray и PIL: "
+                "pip install pystray pillow"
+            )
 
     # ------------------------------------------------------------------
     # Icon generation
@@ -69,8 +74,8 @@ class TrayApp:
         draw = ImageDraw.Draw(img)
 
         # Цвета
-        bg_color = (59, 130, 246)      # синий (#3B82F6)
-        text_color = (255, 255, 255)   # белый
+        bg_color = (59, 130, 246)  # синий (#3B82F6)
+        text_color = (255, 255, 255)  # белый
 
         # Круг с небольшим отступом
         margin = 2
@@ -78,7 +83,7 @@ class TrayApp:
             [margin, margin, size - margin, size - margin],
             fill=bg_color,
             outline=(37, 99, 235),
-            width=2
+            width=2,
         )
 
         # Буква "М" по центру
@@ -118,9 +123,11 @@ class TrayApp:
 
     def _on_create_document(self, template_type: str) -> Callable:
         """Вернуть callback для создания документа указанного типа."""
+
         def handler(icon, item):
             logger.info(f"Запрос создания документа: {template_type}")
             self._run_in_thread(self._create_document_dialog, template_type)
+
         return handler
 
     def _create_document_dialog(self, template_type: str) -> None:
@@ -134,9 +141,7 @@ class TrayApp:
         root.attributes("-topmost", True)
 
         subject = simpledialog.askstring(
-            "Создание документа",
-            f"Введите название предмета для {template_type}:",
-            parent=root
+            "Создание документа", f"Введите название предмета для {template_type}:", parent=root
         )
         root.destroy()
 
@@ -146,15 +151,18 @@ class TrayApp:
         try:
             # Импортируем здесь, чтобы избежать циклических зависимостей
             from agents.document_specialist import DocumentSpecialist
+
             agent = DocumentSpecialist(self.config)
             self._show_notification(
                 "📝 Создание документа",
                 progress_creating_document(template_type),
             )
-            result = agent.create_from_template({
-                "template_name": template_type,
-                "subject": subject,
-            })
+            result = agent.create_from_template(
+                {
+                    "template_name": template_type,
+                    "subject": subject,
+                }
+            )
             if result.get("success"):
                 self._show_notification(
                     "✅ Готово",
@@ -188,9 +196,7 @@ class TrayApp:
         root.attributes("-topmost", True)
 
         query = simpledialog.askstring(
-            "🔍 Поиск методических материалов",
-            "Введите поисковый запрос:",
-            parent=root
+            "🔍 Поиск методических материалов", "Введите поисковый запрос:", parent=root
         )
         root.destroy()
 
@@ -199,6 +205,7 @@ class TrayApp:
 
         try:
             from agents.web_search import WebSearchAgent
+
             agent = WebSearchAgent(self.config)
             self._show_notification("🔍 Поиск", progress_searching(query))
             results = agent.search(query, max_results=10)
@@ -208,8 +215,9 @@ class TrayApp:
                 return
 
             # Формируем краткое сообщение
-            lines = [f"{i+1}. {r.get('title', 'Без названия')[:40]}"
-                     for i, r in enumerate(results[:5])]
+            lines = [
+                f"{i + 1}. {r.get('title', 'Без названия')[:40]}" for i, r in enumerate(results[:5])
+            ]
             msg = "\n".join(lines)
             self._show_notification(success_search_results(len(results)), msg)
         except Exception as e:
@@ -240,6 +248,7 @@ class TrayApp:
             config_path.parent.mkdir(parents=True, exist_ok=True)
             if not config_path.exists():
                 from core.config import save_config, Config
+
                 save_config(Config(), str(config_path))
             os.startfile(str(config_path))
         except Exception as e:
@@ -257,6 +266,7 @@ class TrayApp:
 
         if self._workspace is None:
             from windows.workspace import MethodistWorkspace
+
             self._workspace = MethodistWorkspace(config=self.config)
 
         self._workspace.show()
@@ -300,23 +310,11 @@ class TrayApp:
             pystray.MenuItem(
                 "📝 Создать документ",
                 pystray.Menu(
-                    pystray.MenuItem(
-                        "Рабочая программа",
-                        self._on_create_document("curriculum")
-                    ),
-                    pystray.MenuItem(
-                        "Ведомость",
-                        self._on_create_document("schedule")
-                    ),
-                    pystray.MenuItem(
-                        "Презентация",
-                        self._on_create_document("presentation")
-                    ),
-                    pystray.MenuItem(
-                        "Отчёт",
-                        self._on_create_document("report")
-                    ),
-                )
+                    pystray.MenuItem("Рабочая программа", self._on_create_document("curriculum")),
+                    pystray.MenuItem("Ведомость", self._on_create_document("schedule")),
+                    pystray.MenuItem("Презентация", self._on_create_document("presentation")),
+                    pystray.MenuItem("Отчёт", self._on_create_document("report")),
+                ),
             ),
             pystray.MenuItem("🔍 Поиск", self._on_search),
             pystray.MenuItem("📂 Открыть папку", self._on_open_folder),
@@ -337,12 +335,7 @@ class TrayApp:
         icon_image = self._create_icon_image()
         menu = self._build_menu()
 
-        self.icon = pystray.Icon(
-            "methodist-agent",
-            icon_image,
-            "Методист-Агент",
-            menu
-        )
+        self.icon = pystray.Icon("methodist-agent", icon_image, "Методист-Агент", menu)
 
         # Уведомление при старте
         self.icon.visible = True
