@@ -63,7 +63,7 @@ dev = [
 ]
 
 [project.scripts]
-methodist-agent = "src.main:app"
+methodist-agent = "main:app"
 
 [project.urls]
 Homepage = "https://github.com/methodist-agent/methodist-agent"
