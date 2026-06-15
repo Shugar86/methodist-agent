@@ -17,7 +17,9 @@ class QuickActionsPanel(ttk.Frame):
         self.on_action = on_action
         self._buttons = {}
 
-        ttk.Label(self, text="Быстрые действия", font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=4, pady=4)
+        ttk.Label(self, text="Быстрые действия", font=("Segoe UI", 10, "bold")).pack(
+            anchor="w", padx=4, pady=4
+        )
 
         for action_id, label in self.ACTIONS:
             btn = ttk.Button(self, text=label, command=lambda a=action_id: self._emit(a))
