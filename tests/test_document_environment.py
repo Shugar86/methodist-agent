@@ -1,4 +1,10 @@
+import tempfile
+from pathlib import Path
+
 from core.document_environment import DocumentRequest, DocumentResult, BaseDocumentDriver
+from core.document_environment import DocumentEnvironment
+from core.sandbox import Sandbox
+from drivers.native_driver import NativeDriver
 
 
 def test_document_request_defaults():
@@ -23,3 +29,16 @@ def test_base_driver_interface():
         pass
     else:
         assert False, "execute should raise NotImplementedError"
+
+
+def test_document_environment_selects_native_driver():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output = Path(tmpdir) / "test.docx"
+        env = DocumentEnvironment(
+            sandbox=Sandbox(tmpdir),
+            drivers=[NativeDriver()],
+        )
+        req = DocumentRequest(action="create", doc_type="docx", output_path=str(output), parameters={"title": "Test"})
+        result = env.execute(req)
+        assert result.success is True
+        assert output.exists()
