@@ -14,6 +14,7 @@ from enum import Enum
 from core.config import Config
 from core.model_router import ModelRouter, Message
 from core.context_manager import ContextManager
+from core.context_scout import ContextScout
 
 
 class TaskType(Enum):
@@ -136,10 +137,11 @@ class Orchestrator:
         TaskType.GENERAL: "general",
     }
     
-    def __init__(self, config: Config, model_router: ModelRouter, context_manager: ContextManager):
+    def __init__(self, config: Config, model_router: ModelRouter, context_manager: ContextManager, context_scout: Optional[ContextScout] = None):
         self.config = config
         self.model_router = model_router
         self.context_manager = context_manager
+        self.context_scout = context_scout
         self.current_plan: Optional[ExecutionPlan] = None
     
     def analyze_request(self, user_input: str) -> List[TaskType]:
@@ -162,9 +164,15 @@ class Orchestrator:
     def create_plan(self, user_input: str) -> ExecutionPlan:
         """Create an execution plan based on user request."""
         task_types = self.analyze_request(user_input)
-        
+
+        # Gather relevant skill context
+        context_items = []
+        if self.context_scout:
+            context_items = self.context_scout.find_relevant(user_input)
+        context_text = "\n".join(f"- {item.content}" for item in context_items)
+
         # Use LLM to refine the plan
-        system_prompt = """You are a task planner for an AI assistant that helps methodists in educational institutions.
+        system_prompt = f"""You are a task planner for an AI assistant that helps methodists in educational institutions.
 Your job is to break down user requests into specific, actionable steps.
 
 Available specialists:
@@ -172,6 +180,9 @@ Available specialists:
 - pdf_reader: Extracts text and tables from PDF files
 - web_search: Searches the internet for methodological materials
 - adaptation_agent: Adapts existing documents to new requirements
+
+Relevant skill context:
+{context_text}
 
 Respond with a JSON array of tasks. Each task should have:
 - description: what to do
