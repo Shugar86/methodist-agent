@@ -18,7 +18,14 @@ from rich.table import Table
 # Add src to path when running as a module
 sys.path.insert(0, str(Path(__file__).parent))
 
-from core.config import Config, load_config, get_data_dir, get_output_dir, get_skills_dir, get_templates_dir
+from core.config import (
+    Config,
+    load_config,
+    get_data_dir,
+    get_output_dir,
+    get_skills_dir,
+    get_templates_dir,
+)
 from core.environment_check import run_environment_check
 from core.model_router import ModelRouter
 from core.context_manager import ContextManager
@@ -103,11 +110,7 @@ def get_orchestrator() -> Orchestrator:
     """Get or create orchestrator."""
     global _orchestrator
     if _orchestrator is None:
-        _orchestrator = Orchestrator(
-            get_config(),
-            get_model_router(),
-            get_context_manager()
-        )
+        _orchestrator = Orchestrator(get_config(), get_model_router(), get_context_manager())
     return _orchestrator
 
 
@@ -117,7 +120,9 @@ def print_banner():
     banner.append("🤖 ", style="bold cyan")
     banner.append("Методист-Агент", style="bold blue")
     banner.append(" v1.0.0\n", style="dim")
-    banner.append("Помогаю готовить рабочие программы, ведомости, презентации и отчёты\n", style="dim")
+    banner.append(
+        "Помогаю готовить рабочие программы, ведомости, презентации и отчёты\n", style="dim"
+    )
     banner.append("─" * 50, style="dim")
     console.print(Panel(banner, border_style="blue"))
 
@@ -283,29 +288,36 @@ def _execute_task(task):
     try:
         if agent_name == "document_specialist":
             from agents.document_specialist import DocumentSpecialist
+
             agent = DocumentSpecialist(get_config())
             return agent.execute(task.type, params)
 
         elif agent_name == "pdf_reader":
             from agents.pdf_reader import PDFReaderAgent
+
             agent = PDFReaderAgent(get_config())
             return agent.execute(task.type, params)
 
         elif agent_name == "web_search":
             from agents.web_search import WebSearchAgent
+
             agent = WebSearchAgent(get_config())
             return agent.execute(task.type, params)
 
         elif agent_name == "adaptation_agent":
             from agents.adaptation_agent import AdaptationAgent
+
             agent = AdaptationAgent(get_config())
             return agent.execute(task.type, params)
 
         else:
             # General task - use LLM directly
             messages = [
-                {"role": "system", "content": "You are a helpful assistant for educational methodists."},
-                {"role": "user", "content": params.get("user_input", "")}
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant for educational methodists.",
+                },
+                {"role": "user", "content": params.get("user_input", "")},
             ]
             response = get_model_router().chat(messages)
             return response.content
@@ -320,7 +332,9 @@ def _execute_task(task):
 
 @app.command()
 def create(
-    template: str = typer.Argument(..., help="Template name (curriculum, schedule, report, presentation)"),
+    template: str = typer.Argument(
+        ..., help="Template name (curriculum, schedule, report, presentation)"
+    ),
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
     subject: Optional[str] = typer.Option(None, "--subject", "-s", help="Subject name"),
     hours: Optional[int] = typer.Option(None, "--hours", "-h", help="Total hours"),
@@ -332,12 +346,15 @@ def create(
 
     try:
         from agents.document_specialist import DocumentSpecialist
+
         agent = DocumentSpecialist(get_config())
         result = agent.create_from_template(params)
         if result.get("success") and result.get("path"):
             console.print(f"[green]{success_document_created(result['path'])}[/green]")
         else:
-            console.print(f"[red]{error_generic('создать документ', result.get('error', ''))}[/red]")
+            console.print(
+                f"[red]{error_generic('создать документ', result.get('error', ''))}[/red]"
+            )
     except Exception as e:
         logger.exception("Failed to create document")
         console.print(f"[red]{error_generic('создать документ', str(e))}[/red]")
@@ -356,6 +373,7 @@ def adapt(
 
     try:
         from agents.adaptation_agent import AdaptationAgent
+
         agent = AdaptationAgent(get_config())
         result = agent.adapt_document(params)
         console.print(f"[green]{success_document_adapted(result)}[/green]")
@@ -374,6 +392,7 @@ def search(
 
     try:
         from agents.web_search import WebSearchAgent
+
         agent = WebSearchAgent(get_config())
         results = agent.search(query, max_results)
 
@@ -382,7 +401,9 @@ def search(
 
         error_rows = [r for r in results if r.get("source") == "error"]
         if error_rows:
-            console.print(f"[red]{error_generic('выполнить поиск', error_rows[0].get('snippet', ''))}[/red]")
+            console.print(
+                f"[red]{error_generic('выполнить поиск', error_rows[0].get('snippet', ''))}[/red]"
+            )
             return
 
         table = Table(title=search_results_title())
@@ -396,7 +417,7 @@ def search(
                 str(i),
                 result.get("title", "N/A")[:50],
                 result.get("url", "N/A")[:40],
-                result.get("snippet", "")[:60]
+                result.get("snippet", "")[:60],
             )
 
         console.print(table)
@@ -419,6 +440,7 @@ def pdf(
 
     try:
         from agents.pdf_reader import PDFReaderAgent
+
         agent = PDFReaderAgent(get_config())
         result = agent.process(params)
         if result.get("success"):
@@ -493,6 +515,7 @@ def tray():
 
     try:
         from windows.tray_app import TrayApp
+
         app = TrayApp(get_config())
         app.run()
     except Exception as e:
@@ -504,7 +527,7 @@ def tray():
 @app.command()
 def workspace():
     """Открыть рабочее пространство Методист-Агента."""
-    console.print("[info]Открываю рабочее пространство...[/info]")
+    console.print("[bold blue]Открываю рабочее пространство...[/bold blue]")
     ws = MethodistWorkspace()
     ws.run()
 

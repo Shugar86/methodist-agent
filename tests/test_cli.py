@@ -61,9 +61,7 @@ def test_init_check_not_good(tmp_path, monkeypatch):
 def test_init_onboarding(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     config = _make_config(tmp_path)
-    report = EnvironmentReport(
-        items=[CheckItem(name="A", available=True, message="ok")]
-    )
+    report = EnvironmentReport(items=[CheckItem(name="A", available=True, message="ok")])
     with patch("main.load_config", return_value=config):
         with patch("main.run_environment_check", return_value=report):
             result = runner.invoke(app, ["init"])
@@ -82,9 +80,7 @@ def test_create_curriculum(tmp_path, monkeypatch):
 
     project_curriculum = PROJECT_ROOT / "templates" / "curriculum"
     if project_curriculum.exists():
-        shutil.copytree(
-            project_curriculum, template_dir / "curriculum", dirs_exist_ok=True
-        )
+        shutil.copytree(project_curriculum, template_dir / "curriculum", dirs_exist_ok=True)
 
     import agents.document_specialist as ds
 
