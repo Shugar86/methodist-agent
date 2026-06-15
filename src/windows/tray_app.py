@@ -10,6 +10,14 @@ import logging
 from typing import Optional, Callable
 
 from core.config import Config, get_output_dir, get_default_config_path
+from core.ui_text import (
+    error_generic,
+    info_no_search_results,
+    progress_creating_document,
+    progress_searching,
+    success_document_created,
+    success_search_results,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,14 +146,30 @@ class TrayApp:
             # Импортируем здесь, чтобы избежать циклических зависимостей
             from agents.document_specialist import DocumentSpecialist
             agent = DocumentSpecialist(self.config)
+            self._show_notification(
+                "📝 Создание документа",
+                progress_creating_document(template_type),
+            )
             result = agent.create_from_template({
                 "template_name": template_type,
                 "subject": subject,
             })
-            self._show_notification("✅ Готово", f"Документ создан:\n{result}")
+            if result.get("success"):
+                self._show_notification(
+                    "✅ Готово",
+                    success_document_created(result["path"]),
+                )
+            else:
+                self._show_notification(
+                    "❌ Ошибка",
+                    error_generic("создать документ", result.get("error", "")),
+                )
         except Exception as e:
             logger.exception("Ошибка создания документа")
-            self._show_notification("❌ Ошибка", str(e))
+            self._show_notification(
+                "❌ Ошибка",
+                error_generic("создать документ", str(e)),
+            )
 
     def _on_search(self, icon, item) -> None:
         """Открыть диалог поиска."""
@@ -175,20 +199,24 @@ class TrayApp:
         try:
             from agents.web_search import WebSearchAgent
             agent = WebSearchAgent(self.config)
+            self._show_notification("🔍 Поиск", progress_searching(query))
             results = agent.search(query, max_results=10)
 
             if not results:
-                self._show_notification("Результат", "Ничего не найдено")
+                self._show_notification("Результат", info_no_search_results())
                 return
 
             # Формируем краткое сообщение
             lines = [f"{i+1}. {r.get('title', 'Без названия')[:40]}"
                      for i, r in enumerate(results[:5])]
             msg = "\n".join(lines)
-            self._show_notification(f"🔍 Найдено: {len(results)}", msg)
+            self._show_notification(success_search_results(len(results)), msg)
         except Exception as e:
             logger.exception("Ошибка поиска")
-            self._show_notification("❌ Ошибка поиска", str(e))
+            self._show_notification(
+                "❌ Ошибка поиска",
+                error_generic("выполнить поиск", str(e)),
+            )
 
     def _on_open_folder(self, icon, item) -> None:
         """Открыть папку с выходными файлами."""
@@ -198,7 +226,10 @@ class TrayApp:
             os.startfile(str(self.output_dir))
         except Exception as e:
             logger.exception("Не удалось открыть папку")
-            self._show_notification("❌ Ошибка", f"Не удалось открыть папку: {e}")
+            self._show_notification(
+                "❌ Ошибка",
+                error_generic("открыть папку", str(e)),
+            )
 
     def _on_settings(self, icon, item) -> None:
         """Открыть файл конфигурации."""
@@ -212,7 +243,10 @@ class TrayApp:
             os.startfile(str(config_path))
         except Exception as e:
             logger.exception("Не удалось открыть настройки")
-            self._show_notification("❌ Ошибка", f"Не удалось открыть настройки: {e}")
+            self._show_notification(
+                "❌ Ошибка",
+                error_generic("открыть настройки", str(e)),
+            )
 
     def _on_exit(self, icon, item) -> None:
         """Завершить приложение."""

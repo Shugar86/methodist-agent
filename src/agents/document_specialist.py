@@ -3,12 +3,17 @@ Document Specialist — агент для создания и редактиро
 Windows-first. Поддерживает COM-режим (pywin32) и Native-режим (fallback).
 """
 
-import os
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from core.config import Config
+from core.ui_text import (
+    error_no_office_fallback,
+    error_template_folder_empty,
+    error_template_not_found,
+    error_unsupported_format,
+)
 from .utils import ensure_directory, find_replace_docx, generate_filename
 
 logger = logging.getLogger(__name__)
@@ -171,7 +176,7 @@ class DocumentSpecialist:
 
         # Fallback native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from docx import Document
 
@@ -234,7 +239,7 @@ class DocumentSpecialist:
 
         # Fallback native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from docx import Document
 
@@ -302,7 +307,7 @@ class DocumentSpecialist:
 
         # Fallback native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from openpyxl import Workbook
 
@@ -367,7 +372,7 @@ class DocumentSpecialist:
 
         # Fallback native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from openpyxl import load_workbook
 
@@ -433,7 +438,7 @@ class DocumentSpecialist:
 
         # Fallback native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from pptx import Presentation
         from pptx.util import Inches, Pt
@@ -524,7 +529,7 @@ class DocumentSpecialist:
 
         # Fallback native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from pptx import Presentation
 
@@ -586,11 +591,11 @@ class DocumentSpecialist:
                     found = candidate_path
                     break
             if found is None:
-                return {"success": False, "error": f"В папке шаблона не найден template.*: {template_path}"}
+                return {"success": False, "error": error_template_folder_empty(template_path)}
             template_path = found
 
         if not template_path.exists():
-            return {"success": False, "error": f"Шаблон не найден: {template_path}"}
+            return {"success": False, "error": error_template_not_found(template_path)}
 
         if output_format is None:
             output_format = template_path.suffix.lstrip(".").lower()
@@ -610,7 +615,7 @@ class DocumentSpecialist:
         if output_format == "pptx":
             return self._create_from_template_pptx(template_path, output_path, replacements)
 
-        return {"success": False, "error": f"Неподдерживаемый формат: {output_format}"}
+        return {"success": False, "error": error_unsupported_format(output_format)}
 
     def _create_from_template_docx(self, template_path: Path, output_path: Path, replacements: Dict[str, str]) -> Dict[str, Any]:
         # COM
@@ -635,7 +640,7 @@ class DocumentSpecialist:
 
         # Native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from docx import Document
         doc = Document(str(template_path))
@@ -663,7 +668,7 @@ class DocumentSpecialist:
 
         # Native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from openpyxl import load_workbook
         wb = load_workbook(str(template_path))
@@ -694,7 +699,7 @@ class DocumentSpecialist:
 
         # Native
         if not self._native_available:
-            return {"success": False, "error": "Ни COM, ни native библиотеки недоступны"}
+            return {"success": False, "error": error_no_office_fallback()}
 
         from pptx import Presentation
         prs = Presentation(str(template_path))

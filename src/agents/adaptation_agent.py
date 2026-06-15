@@ -14,15 +14,14 @@ AdaptationAgent — агент адаптации документов для м
 - auto: COM если доступен, иначе native
 """
 
-import os
-import re
 import difflib
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, Optional, Any
 from datetime import datetime
 
 from core.config import Config, get_output_dir, get_templates_dir
+from core.ui_text import error_file_not_found, error_generic, error_no_office_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,7 @@ except ImportError:
 # Native .docx support
 try:
     from docx import Document
-    from docx.shared import Pt, Inches, RGBColor
+    from docx.shared import Pt, Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     _HAS_DOCX = True
 except ImportError:
@@ -64,7 +63,7 @@ class AdaptationAgent:
         """Определить рабочий режим обработки документов."""
         preferred = self.config.documents.preferred_mode
         if preferred == "com" and not _HAS_WIN32:
-            logger.warning("Запрошен COM-режим, но pywin32 не установлен. Переключаюсь на native.")
+            logger.warning(error_no_office_fallback())
             return "native" if _HAS_DOCX else "none"
         if preferred == "native" and not _HAS_DOCX:
             logger.warning("Запрошен native-режим, но python-docx не установлен.")
@@ -107,7 +106,16 @@ class AdaptationAgent:
             return handler(params)
         except Exception as e:
             logger.exception(f"Ошибка при выполнении {task_type}")
-            raise AdaptationError(f"{task_type} завершился с ошибкой: {e}") from e
+            if isinstance(e, AdaptationError):
+                raise
+            friendly_action = {
+                "adapt_document": "адаптировать документ",
+                "compare_documents": "сравнить документы",
+                "batch_replace": "выполнить замену текста",
+                "update_references": "обновить ссылки",
+                "apply_formatting_rules": "применить правила форматирования",
+            }.get(task_type, task_type)
+            raise AdaptationError(error_generic(friendly_action, str(e))) from e
 
     def adapt_document(self, params: Dict[str, Any]) -> str:
         """
@@ -131,7 +139,7 @@ class AdaptationAgent:
 
         input_path = Path(input_file)
         if not input_path.exists():
-            raise AdaptationError(f"Файл не найден: {input_file}")
+            raise AdaptationError(error_file_not_found(input_file))
 
         # Определить путь выходного файла
         if output:
@@ -200,7 +208,7 @@ class AdaptationAgent:
 
         path = Path(doc_path)
         if not path.exists():
-            raise AdaptationError(f"Файл не найден: {doc_path}")
+            raise AdaptationError(error_file_not_found(doc_path))
 
         # Создаём копию для редактирования
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -235,7 +243,7 @@ class AdaptationAgent:
 
         path = Path(doc_path)
         if not path.exists():
-            raise AdaptationError(f"Файл не найден: {doc_path}")
+            raise AdaptationError(error_file_not_found(doc_path))
 
         # Справочник устаревших → актуальных ссылок
         reference_map = {
@@ -278,7 +286,7 @@ class AdaptationAgent:
 
         path = Path(doc_path)
         if not path.exists():
-            raise AdaptationError(f"Файл не найден: {doc_path}")
+            raise AdaptationError(error_file_not_found(doc_path))
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = self.output_dir / f"{path.stem}_formatted_{timestamp}{path.suffix}"
