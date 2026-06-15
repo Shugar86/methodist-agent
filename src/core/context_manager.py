@@ -3,15 +3,15 @@ Context Manager - manages sessions, skills loading, and context.
 Inspired by OpenCode's ContextScout concept.
 """
 
-import os
 import sqlite3
 import json
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 from core.config import Config, get_data_dir
+from core.skill_registry import SkillRegistry
 
 
 @dataclass
@@ -44,6 +44,7 @@ class ContextManager:
         self.data_dir = get_data_dir(config)
         self.db_path = self.data_dir / "sessions.db"
         self.skills_dir = Path(config.skills.repository).expanduser()
+        self.skill_registry = SkillRegistry(self.skills_dir)
         self._current_session: Optional[Session] = None
         self._loaded_skills: Dict[str, Skill] = {}
         
