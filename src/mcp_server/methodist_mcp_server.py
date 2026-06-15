@@ -4,7 +4,6 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("methodist-agent")
-mcp._tools = mcp._tool_manager._tools
 
 
 def _project_root() -> Path:

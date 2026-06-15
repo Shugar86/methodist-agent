@@ -169,7 +169,7 @@ Layout:
 
 ### 6.2 Implementation
 
-- Файл: `src/mcp/methodist_mcp_server.py`.
+- Файл: `src/mcp_server/methodist_mcp_server.py`.
 - Библиотека: `mcp[cli]` (FastMCP).
 - Transport: stdio по умолчанию; streamable-http под флагом.
 
@@ -376,7 +376,7 @@ metadata:
 ### Wave 2: Document Environment + MCP Server
 - `src/core/document_environment.py` и драйверы.
 - `src/core/event_bus.py`.
-- `src/mcp/methodist_mcp_server.py`.
+- `src/mcp_server/methodist_mcp_server.py`.
 - Hooks и sandbox.
 - UI отображает статус документов.
 

@@ -1,8 +1,11 @@
-from mcp.server.fastmcp import FastMCP  # noqa: F401
+import tempfile
+from pathlib import Path
 
 
 def test_mcp_server_has_list_documents_tool():
-    from mcp.methodist_mcp_server import mcp
+    from mcp_server.methodist_mcp_server import list_documents
 
-    tools = mcp._tools
-    assert any(t.name == "list_documents" for t in tools.values())
+    with tempfile.TemporaryDirectory() as tmpdir:
+        open(Path(tmpdir) / "test.docx", "w").close()
+        result = list_documents(folder=tmpdir)
+        assert any("test.docx" in item for item in result)
