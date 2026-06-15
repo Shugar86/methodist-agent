@@ -40,6 +40,7 @@ def test_success_document_created():
 
 def test_error_template_not_found():
     from pathlib import Path
+
     msg = error_template_not_found(Path("/tmp/missing"))
     assert "Шаблон не найден" in msg
     assert "init" in msg
@@ -147,7 +148,9 @@ def test_error_pdf_processing():
 
 def test_workspace_strings_exist():
     from core import ui_text
+
     assert callable(getattr(ui_text, "workspace_title", None))
     assert callable(getattr(ui_text, "workspace_quick_actions", None))
     assert callable(getattr(ui_text, "workspace_approved", None))
     assert callable(getattr(ui_text, "workspace_cancelled", None))
+    assert callable(getattr(ui_text, "workspace_file_panel", None))
