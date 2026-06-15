@@ -4,8 +4,7 @@ Supports OpenAI, Anthropic, Ollama, and other providers.
 """
 
 import os
-import json
-from typing import Optional, Dict, Any, List, Iterator
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 
 from core.config import Config, ModelConfig
@@ -93,7 +92,7 @@ class ModelRouter:
         max_tokens: Optional[int] = None,
         tools: Optional[List[Dict]] = None,
         stream: bool = False
-    ) -> ChatResponse:
+    ) -> Any:
         """Send chat request to LLM."""
         model_name = model_name or self.current_model
         model_config = self.config.models.get(model_name)
@@ -121,8 +120,6 @@ class ModelRouter:
     
     def _chat_openai(self, client, messages, model_config, temperature, max_tokens, tools, stream):
         """Chat using OpenAI-compatible API."""
-        import openai
-        
         formatted_messages = []
         for msg in messages:
             m = {"role": msg.role, "content": msg.content}
