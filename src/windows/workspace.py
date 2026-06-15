@@ -4,12 +4,16 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Optional, Union
 
-from core.config import Config
+from core.config import Config, get_data_dir
 from core.context_manager import ContextManager
 from core.model_router import ModelRouter
 from core.orchestrator import Orchestrator
 from core.event_bus import EventBus
+from core.document_environment import DocumentEnvironment
+from core.sandbox import Sandbox
 from core import ui_text
+from drivers.com_driver import COMDriver
+from drivers.native_driver import NativeDriver
 from windows.chat_panel import ChatPanel
 from windows.quick_actions import QuickActionsPanel
 from windows.file_panel import FilePanel
@@ -36,6 +40,11 @@ class MethodistWorkspace:
         self.context_manager = ContextManager(self.config)
         self.model_router = ModelRouter(self.config)
         self.orchestrator = Orchestrator(self.config, self.model_router, self.context_manager)
+        self.document_environment = DocumentEnvironment(
+            sandbox=Sandbox(get_data_dir(self.config)),
+            drivers=[COMDriver(), NativeDriver()],
+            event_bus=self.event_bus,
+        )
 
         self._build_ui()
 

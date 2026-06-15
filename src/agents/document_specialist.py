@@ -7,13 +7,17 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from core.config import Config
+from core.config import Config, get_data_dir
+from core.document_environment import DocumentEnvironment, DocumentRequest
+from core.sandbox import Sandbox
 from core.ui_text import (
     error_no_office_fallback,
     error_template_folder_empty,
     error_template_not_found,
     error_unsupported_format,
 )
+from drivers.com_driver import COMDriver
+from drivers.native_driver import NativeDriver
 from .utils import ensure_directory, find_replace_docx, generate_filename
 
 logger = logging.getLogger(__name__)
@@ -29,14 +33,29 @@ class DocumentSpecialist:
     Приоритет: COM-режим (через pywin32). Fallback: native библиотеки.
     """
 
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(
+        self,
+        config: Optional[Config] = None,
+        document_environment: Optional[DocumentEnvironment] = None,
+    ):
         self.config = config
         self._word_app: Optional[Any] = None
         self._excel_app: Optional[Any] = None
         self._ppt_app: Optional[Any] = None
         self._com_available = self._check_com()
         self._native_available = self._check_native()
-        logger.info(f"DocumentSpecialist init: COM={self._com_available}, Native={self._native_available}")
+        if document_environment is not None:
+            self.document_environment = document_environment
+        else:
+            data_dir = get_data_dir(config) if config else Path.home() / ".methodist-agent"
+            self.document_environment = DocumentEnvironment(
+                sandbox=Sandbox(data_dir),
+                drivers=[COMDriver(), NativeDriver()],
+            )
+        logger.info(
+            f"DocumentSpecialist init: COM={self._com_available}, "
+            f"Native={self._native_available}"
+        )
 
     # ------------------------------------------------------------------
     # Проверка доступности режимов
@@ -174,23 +193,34 @@ class DocumentSpecialist:
             except Exception as exc:
                 logger.warning(f"COM create_docx не удался: {exc}. Fallback на native.")
 
-        # Fallback native
+        # Fallback native через DocumentEnvironment
         if not self._native_available:
             return {"success": False, "error": error_no_office_fallback()}
+
+        request = DocumentRequest(
+            action="create",
+            doc_type="docx",
+            output_path=str(output_path),
+            parameters={"title": subject},
+        )
+        result = self.document_environment.execute(request)
+        if not result.success:
+            return {"success": False, "error": result.message}
 
         from docx import Document
 
         if template and Path(template).exists():
             doc = Document(template)
         else:
-            doc = Document()
+            doc = Document(result.output_path)
 
         for paragraph in content:
             doc.add_paragraph(str(paragraph))
 
-        doc.save(str(output_path))
-        logger.info(f"DOCX создан (native): {output_path}")
-        return {"success": True, "path": str(output_path), "mode": "native"}
+        doc.save(result.output_path)
+        mode = "com" if "COM" in result.message else "native"
+        logger.info(f"DOCX создан ({mode}): {result.output_path}")
+        return {"success": True, "path": result.output_path, "mode": mode}
 
     def edit_docx(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -305,27 +335,41 @@ class DocumentSpecialist:
             except Exception as exc:
                 logger.warning(f"COM create_xlsx не удался: {exc}. Fallback на native.")
 
-        # Fallback native
+        # Fallback native через DocumentEnvironment
         if not self._native_available:
             return {"success": False, "error": error_no_office_fallback()}
 
-        from openpyxl import Workbook
+        request = DocumentRequest(
+            action="create",
+            doc_type="xlsx",
+            output_path=str(output_path),
+            parameters={"title": subject},
+        )
+        result = self.document_environment.execute(request)
+        if not result.success:
+            return {"success": False, "error": result.message}
 
-        wb = Workbook()
+        from openpyxl import load_workbook
+
+        wb = load_workbook(result.output_path)
+        # Удаляем временный лист, созданный драйвером, и создаём нужные листы
+        temp_sheets = list(wb.sheetnames)
         first = True
         for sheet_name, rows in sheets.items():
-            if first:
+            if first and temp_sheets:
                 ws = wb.active
                 ws.title = sheet_name
+                ws.delete_rows(1, ws.max_row)
                 first = False
             else:
                 ws = wb.create_sheet(title=sheet_name)
             for row in rows:
                 ws.append(row)
 
-        wb.save(str(output_path))
-        logger.info(f"XLSX создан (native): {output_path}")
-        return {"success": True, "path": str(output_path), "mode": "native"}
+        wb.save(result.output_path)
+        mode = "com" if "COM" in result.message else "native"
+        logger.info(f"XLSX создан ({mode}): {result.output_path}")
+        return {"success": True, "path": result.output_path, "mode": mode}
 
     def edit_xlsx(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -436,19 +480,39 @@ class DocumentSpecialist:
             except Exception as exc:
                 logger.warning(f"COM create_pptx не удался: {exc}. Fallback на native.")
 
-        # Fallback native
+        # Fallback native через DocumentEnvironment
         if not self._native_available:
             return {"success": False, "error": error_no_office_fallback()}
+
+        request = DocumentRequest(
+            action="create",
+            doc_type="pptx",
+            output_path=str(output_path),
+            parameters={"title": subject},
+        )
+        result = self.document_environment.execute(request)
+        if not result.success:
+            return {"success": False, "error": result.message}
 
         from pptx import Presentation
         from pptx.util import Inches, Pt
 
-        prs = Presentation()
+        prs = Presentation(result.output_path)
         blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[0]
 
+        # Первый слайд создан драйвером с заголовком; добавляем остальные
+        first = True
         for slide_data in slides:
             title = slide_data.get("title", "")
             content = slide_data.get("content", [])
+            if first and prs.slides:
+                slide = prs.slides[0]
+                for shape in slide.shapes:
+                    if shape.has_text_frame and shape.text_frame.text.strip() == "":
+                        shape.text_frame.text = title
+                        break
+                first = False
+                continue
             slide = prs.slides.add_slide(blank_layout)
 
             # Заголовок
@@ -477,9 +541,10 @@ class DocumentSpecialist:
                     p.text = str(line)
                     p.font.size = Pt(18)
 
-        prs.save(str(output_path))
-        logger.info(f"PPTX создан (native): {output_path}")
-        return {"success": True, "path": str(output_path), "mode": "native"}
+        prs.save(result.output_path)
+        mode = "com" if "COM" in result.message else "native"
+        logger.info(f"PPTX создан ({mode}): {result.output_path}")
+        return {"success": True, "path": result.output_path, "mode": mode}
 
     def edit_pptx(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
