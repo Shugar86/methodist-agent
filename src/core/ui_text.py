@@ -223,3 +223,47 @@ def error_agent_not_implemented(agent_name: str) -> str:
 
 def error_task_execution(reason: str) -> str:
     return f"Ошибка выполнения: {reason}"
+
+
+# ------------------------------------------------------------------
+# Search results
+# ------------------------------------------------------------------
+
+def search_results_title() -> str:
+    return "Результаты поиска"
+
+
+def search_header_index() -> str:
+    return "#"
+
+
+def search_header_title() -> str:
+    return "Заголовок"
+
+
+def search_header_url() -> str:
+    return "URL"
+
+
+def search_header_description() -> str:
+    return "Описание"
+
+
+# ------------------------------------------------------------------
+# Task status
+# ------------------------------------------------------------------
+
+def task_success(description: str) -> str:
+    return f"  ✅ {description}"
+
+
+def task_warning(description: str) -> str:
+    return f"  ⚠️ {description} — требуется внимание"
+
+
+# ------------------------------------------------------------------
+# PDF
+# ------------------------------------------------------------------
+
+def error_pdf_processing(reason: str) -> str:
+    return f"❌ Не удалось обработать PDF: {reason}"

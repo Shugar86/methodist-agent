@@ -18,7 +18,7 @@ from rich.table import Table
 # Add src to path when running as a module
 sys.path.insert(0, str(Path(__file__).parent))
 
-from core.config import Config, load_config, get_output_dir
+from core.config import Config, load_config, get_data_dir, get_output_dir, get_skills_dir, get_templates_dir
 from core.model_router import ModelRouter
 from core.context_manager import ContextManager
 from core.orchestrator import Orchestrator
@@ -29,6 +29,7 @@ from core.ui_text import (
     chat_hint_exit,
     error_agent_not_implemented,
     error_generic,
+    error_pdf_processing,
     error_task_execution,
     info_data_dir,
     info_output_dir,
@@ -40,12 +41,19 @@ from core.ui_text import (
     progress_creating_document,
     progress_pdf,
     progress_searching,
+    search_header_description,
+    search_header_index,
+    search_header_title,
+    search_header_url,
+    search_results_title,
     status_analyzing_request,
     status_executing_plan,
     success_document_adapted,
     success_document_created,
     success_pdf_ready,
     success_search_results,
+    task_success,
+    task_warning,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,7 +128,6 @@ def init(
         config = load_config(config_path)
 
         # Create directories
-        from core.config import get_data_dir, get_templates_dir, get_skills_dir
         data_dir = get_data_dir(config)
         templates_dir = get_templates_dir(config)
         skills_dir = get_skills_dir(config)
@@ -154,14 +161,14 @@ def chat(
 ):
     """Chat with the agent."""
     print_banner()
-    
+
     orchestrator = get_orchestrator()
     context_manager = get_context_manager()
-    
+
     # Create session if none exists
     if not context_manager._current_session:
         context_manager.create_session("CLI Session")
-    
+
     if message:
         # Single message mode
         _process_message(message, orchestrator, no_approval)
@@ -229,11 +236,11 @@ def _process_message(user_input: str, orchestrator: Orchestrator, no_approval: b
             orchestrator.mark_task_complete(task, result)
 
             if result:
-                console.print(f"  ✅ {task.description}")
+                console.print(f"[green]{task_success(task.description)}[/green]")
                 if isinstance(result, str) and len(result) < 500:
                     console.print(f"     [dim]{result}[/dim]")
             else:
-                console.print(f"  ⚠️ {task.description} — требуется внимание")
+                console.print(f"[yellow]{task_warning(task.description)}[/yellow]")
 
         # Show summary
         console.print("\n" + orchestrator.get_plan_summary(plan))
@@ -356,11 +363,11 @@ def search(
             console.print(f"[red]{error_generic('выполнить поиск', error_rows[0].get('snippet', ''))}[/red]")
             return
 
-        table = Table(title="Результаты поиска")
-        table.add_column("#", style="cyan", width=3)
-        table.add_column("Заголовок", style="green")
-        table.add_column("URL", style="blue")
-        table.add_column("Описание", style="dim")
+        table = Table(title=search_results_title())
+        table.add_column(search_header_index(), style="cyan", width=3)
+        table.add_column(search_header_title(), style="green")
+        table.add_column(search_header_url(), style="blue")
+        table.add_column(search_header_description(), style="dim")
 
         for i, result in enumerate(results, 1):
             table.add_row(
@@ -403,9 +410,11 @@ def pdf(
                 or result.get("tables_error")
                 or result.get("ocr_error")
                 or result.get("conversion_error")
-                or "не удалось обработать PDF"
             )
-            console.print(f"[red]{error_generic('обработать PDF', error)}[/red]")
+            if error:
+                console.print(f"[red]{error_generic('обработать PDF', error)}[/red]")
+            else:
+                console.print(f"[red]{error_pdf_processing('неизвестная ошибка')}[/red]")
     except Exception as e:
         logger.exception("Failed to process PDF")
         console.print(f"[red]{error_generic('обработать PDF', str(e))}[/red]")
@@ -418,21 +427,21 @@ def skills(
 ):
     """Manage skills."""
     context_manager = get_context_manager()
-    
+
     if list_all:
         all_skills = context_manager.get_all_skills()
-        
+
         table = Table(title="Доступные Skills")
         table.add_column("Категория", style="cyan")
         table.add_column("Название", style="green")
         table.add_column("Триггеры", style="dim")
-        
+
         for key, skill in all_skills.items():
             if category and skill.category != category:
                 continue
             triggers = ", ".join(skill.triggers[:3]) if skill.triggers else "—"
             table.add_row(skill.category, skill.name, triggers)
-        
+
         console.print(table)
     else:
         console.print("Используйте --list для просмотра skills")
@@ -445,7 +454,7 @@ def config(
 ):
     """Manage configuration."""
     config = get_config()
-    
+
     if show:
         console.print_json(config.model_dump_json())
     elif edit:
@@ -459,7 +468,7 @@ def config(
 def tray():
     """Launch system tray application."""
     console.print("[bold blue]🖥️ Запускаю System Tray...[/bold blue]")
-    
+
     try:
         from windows.tray_app import TrayApp
         app = TrayApp(get_config())

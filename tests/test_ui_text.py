@@ -8,6 +8,7 @@ from core.ui_text import (
     error_agent_not_implemented,
     error_generic,
     error_no_office_fallback,
+    error_pdf_processing,
     error_task_execution,
     error_template_not_found,
     info_data_dir,
@@ -16,9 +17,16 @@ from core.ui_text import (
     info_templates_dir,
     onboarding_welcome,
     progress_creating_document,
+    search_header_description,
+    search_header_index,
+    search_header_title,
+    search_header_url,
+    search_results_title,
     status_analyzing_request,
     status_executing_plan,
     success_document_created,
+    task_success,
+    task_warning,
 )
 
 
@@ -101,3 +109,37 @@ def test_error_task_execution():
 
 def test_error_generic():
     assert "Не удалось" in error_generic("сделать", "бум")
+
+
+def test_search_results_title():
+    assert search_results_title() == "Результаты поиска"
+
+
+def test_search_header_index():
+    assert search_header_index() == "#"
+
+
+def test_search_header_title():
+    assert search_header_title() == "Заголовок"
+
+
+def test_search_header_url():
+    assert search_header_url() == "URL"
+
+
+def test_search_header_description():
+    assert search_header_description() == "Описание"
+
+
+def test_task_success():
+    assert task_success("Сделано") == "  ✅ Сделано"
+
+
+def test_task_warning():
+    assert task_warning("Внимание") == "  ⚠️ Внимание — требуется внимание"
+
+
+def test_error_pdf_processing():
+    msg = error_pdf_processing("файл повреждён")
+    assert "Не удалось обработать PDF" in msg
+    assert "файл повреждён" in msg
