@@ -31,6 +31,26 @@ class ChatPanel(ttk.Frame):
     def get_text(self) -> str:
         return self.history.get("1.0", "end")
 
+    def start_stream(self) -> None:
+        self.history.configure(state="normal")
+        self.history.insert("end", "assistant: ")
+        self.history.configure(state="disabled")
+        self._stream_buffer = ""
+
+    def append_stream_chunk(self, text: str) -> None:
+        if not text:
+            return
+        self._stream_buffer += text
+        self.history.configure(state="normal")
+        self.history.insert("end", text)
+        self.history.configure(state="disabled")
+        self.history.see("end")
+
+    def finish_stream(self) -> None:
+        self.history.configure(state="normal")
+        self.history.insert("end", "\n\n")
+        self.history.configure(state="disabled")
+
     def _on_send(self, event=None) -> None:
         text = self.input_var.get().strip()
         if not text:

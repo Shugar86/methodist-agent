@@ -1,5 +1,7 @@
 import tkinter as tk
+
 import pytest
+
 from windows.chat_panel import ChatPanel
 
 
@@ -16,3 +18,16 @@ def test_chat_panel_adds_message(root):
     panel.add_message("user", "Привет")
     assert "Привет" in panel.get_text()
     assert "user" in panel.get_text()
+
+
+# tests/test_chat_panel.py — append
+
+
+def test_chat_panel_stream_message(root):
+    panel = ChatPanel(root)
+    panel.start_stream()
+    panel.append_stream_chunk("Привет")
+    panel.append_stream_chunk(" мир")
+    panel.finish_stream()
+    text = panel.get_text()
+    assert "Привет мир" in text
