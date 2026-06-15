@@ -23,13 +23,25 @@ from core.model_router import ModelRouter
 from core.context_manager import ContextManager
 from core.orchestrator import Orchestrator
 from core.ui_text import (
+    approval_prompt,
+    approval_rejected,
+    chat_goodbye,
+    chat_hint_exit,
+    error_agent_not_implemented,
     error_generic,
+    error_task_execution,
+    info_data_dir,
+    info_output_dir,
+    info_skills_dir,
+    info_templates_dir,
     onboarding_first_step,
     onboarding_welcome,
     progress_adapting_document,
     progress_creating_document,
     progress_pdf,
     progress_searching,
+    status_analyzing_request,
+    status_executing_plan,
     success_document_adapted,
     success_document_created,
     success_pdf_ready,
@@ -104,31 +116,35 @@ def init(
     config_path: Optional[str] = typer.Option(None, "--config", "-c", help="Path to config file")
 ):
     """Initialize agent configuration."""
-    config = load_config(config_path)
-    
-    # Create directories
-    from core.config import get_data_dir, get_templates_dir, get_skills_dir
-    get_data_dir(config)
-    templates_dir = get_templates_dir(config)
-    skills_dir = get_skills_dir(config)
-    get_output_dir(config)
+    try:
+        config = load_config(config_path)
 
-    # Copy bundled skills and templates if they exist
-    project_root = Path(__file__).parent.parent
-    bundled_skills = project_root / "skills"
-    bundled_templates = project_root / "templates"
+        # Create directories
+        from core.config import get_data_dir, get_templates_dir, get_skills_dir
+        data_dir = get_data_dir(config)
+        templates_dir = get_templates_dir(config)
+        skills_dir = get_skills_dir(config)
+        output_dir = get_output_dir(config)
 
-    if bundled_skills.exists():
-        shutil.copytree(bundled_skills, skills_dir, dirs_exist_ok=True)
-    if bundled_templates.exists():
-        shutil.copytree(bundled_templates, templates_dir, dirs_exist_ok=True)
+        # Copy bundled skills and templates if they exist
+        project_root = Path(__file__).parent.parent
+        bundled_skills = project_root / "skills"
+        bundled_templates = project_root / "templates"
 
-    console.print(onboarding_welcome())
-    console.print(onboarding_first_step())
-    console.print(f"📁 Данные: {get_data_dir(config)}")
-    console.print(f"📁 Шаблоны: {get_templates_dir(config)}")
-    console.print(f"📁 Skills: {get_skills_dir(config)}")
-    console.print(f"📁 Выходные файлы: {get_output_dir(config)}")
+        if bundled_skills.exists():
+            shutil.copytree(bundled_skills, skills_dir, dirs_exist_ok=True)
+        if bundled_templates.exists():
+            shutil.copytree(bundled_templates, templates_dir, dirs_exist_ok=True)
+
+        console.print(onboarding_welcome())
+        console.print(onboarding_first_step())
+        console.print(info_data_dir(data_dir))
+        console.print(info_templates_dir(templates_dir))
+        console.print(info_skills_dir(skills_dir))
+        console.print(info_output_dir(output_dir))
+    except Exception as e:
+        logger.exception("Failed to initialize agent")
+        console.print(error_generic("инициализировать агента", str(e)))
 
 
 @app.command()
@@ -151,23 +167,23 @@ def chat(
         _process_message(message, orchestrator, no_approval)
     else:
         # Interactive mode
-        console.print("\n💬 Интерактивный режим. Введите 'exit' или 'quit' для выхода.\n")
-        
+        console.print(chat_hint_exit())
+
         while True:
             try:
                 user_input = console.input("[bold green]Вы:[/bold green] ")
-                
+
                 if user_input.lower() in ["exit", "quit", "выход"]:
-                    console.print("👋 До свидания!")
+                    console.print(chat_goodbye())
                     break
-                
+
                 if not user_input.strip():
                     continue
-                
+
                 _process_message(user_input, orchestrator, no_approval)
-                
+
             except KeyboardInterrupt:
-                console.print("\n👋 До свидания!")
+                console.print("\n" + chat_goodbye())
                 break
             except Exception as e:
                 logger.exception("Failed to process message")
@@ -183,7 +199,7 @@ def _process_message(user_input: str, orchestrator: Orchestrator, no_approval: b
         context_manager.add_message("user", user_input)
 
         # Create plan
-        with console.status("[bold blue]Анализирую запрос...[/bold blue]"):
+        with console.status(f"[bold blue]{status_analyzing_request()}[/bold blue]"):
             plan = orchestrator.create_plan(user_input)
 
         # Present plan
@@ -191,16 +207,16 @@ def _process_message(user_input: str, orchestrator: Orchestrator, no_approval: b
 
         # Approval gate
         if plan.requires_approval and not no_approval:
-            approval = console.input("\n[bold yellow]Подтвердить выполнение? (y/n):[/bold yellow] ")
+            approval = console.input(f"\n[bold yellow]{approval_prompt()}[/bold yellow] ")
             if approval.lower() not in ["y", "yes", "да", "д"]:
-                console.print("❌ План отклонён.")
+                console.print(approval_rejected())
                 orchestrator.reject_plan(plan)
                 return
 
         orchestrator.approve_plan(plan)
 
         # Execute plan
-        console.print("\n[bold green]▶ Выполняю план...[/bold green]\n")
+        console.print(f"\n[bold green]{status_executing_plan()}[/bold green]\n")
 
         while not orchestrator.is_plan_complete(plan):
             task = orchestrator.get_next_task(plan)
@@ -265,12 +281,12 @@ def _execute_task(task):
             response = get_model_router().chat(messages)
             return response.content
 
-    except ImportError as e:
+    except ImportError:
         logger.exception("Failed to load agent %s", agent_name)
-        return f"Агент {agent_name} ещё не реализован ({e}). Использую LLM..."
+        return error_agent_not_implemented(agent_name)
     except Exception as e:
         logger.exception("Failed to execute task")
-        return f"Ошибка выполнения: {e}"
+        return error_task_execution(str(e))
 
 
 @app.command()

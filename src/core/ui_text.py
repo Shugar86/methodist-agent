@@ -166,3 +166,60 @@ def approval_prompt() -> str:
 
 def approval_rejected() -> str:
     return "❌ План отклонён."
+
+
+# ------------------------------------------------------------------
+# Status
+# ------------------------------------------------------------------
+
+def status_analyzing_request() -> str:
+    return "Анализирую запрос…"
+
+
+def status_executing_plan() -> str:
+    return "▶ Выполняю план…"
+
+
+# ------------------------------------------------------------------
+# Chat
+# ------------------------------------------------------------------
+
+def chat_hint_exit() -> str:
+    return "\n💬 Интерактивный режим. Введите 'exit' или 'quit' для выхода.\n"
+
+
+def chat_goodbye() -> str:
+    return "👋 До свидания!"
+
+
+# ------------------------------------------------------------------
+# Info directories
+# ------------------------------------------------------------------
+
+def info_data_dir(path: str | Path) -> str:
+    return f"📁 Данные: {path}"
+
+
+def info_templates_dir(path: str | Path) -> str:
+    return f"📁 Шаблоны: {path}"
+
+
+def info_skills_dir(path: str | Path) -> str:
+    return f"📁 Skills: {path}"
+
+
+def info_output_dir(path: str | Path) -> str:
+    return f"📁 Выходные файлы: {path}"
+
+
+# ------------------------------------------------------------------
+# Errors
+# ------------------------------------------------------------------
+
+
+def error_agent_not_implemented(agent_name: str) -> str:
+    return f"Агент {agent_name} ещё не реализован. Использую LLM…"
+
+
+def error_task_execution(reason: str) -> str:
+    return f"Ошибка выполнения: {reason}"

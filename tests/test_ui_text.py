@@ -1,9 +1,24 @@
+from pathlib import Path
+
 from core.ui_text import (
-    progress_creating_document,
-    success_document_created,
-    error_template_not_found,
+    approval_prompt,
+    approval_rejected,
+    chat_goodbye,
+    chat_hint_exit,
+    error_agent_not_implemented,
+    error_generic,
     error_no_office_fallback,
+    error_task_execution,
+    error_template_not_found,
+    info_data_dir,
+    info_output_dir,
+    info_skills_dir,
+    info_templates_dir,
     onboarding_welcome,
+    progress_creating_document,
+    status_analyzing_request,
+    status_executing_plan,
+    success_document_created,
 )
 
 
@@ -30,3 +45,59 @@ def test_error_no_office_fallback():
 
 def test_onboarding_welcome():
     assert "Добро пожаловать" in onboarding_welcome()
+
+
+def test_info_data_dir():
+    assert info_data_dir("/tmp/data") == "📁 Данные: /tmp/data"
+
+
+def test_info_templates_dir():
+    assert info_templates_dir(Path("/tmp/templates")) == "📁 Шаблоны: /tmp/templates"
+
+
+def test_info_skills_dir():
+    assert "📁 Skills" in info_skills_dir("/tmp/skills")
+
+
+def test_info_output_dir():
+    assert "Выходные файлы" in info_output_dir("/tmp/out")
+
+
+def test_status_analyzing_request():
+    assert status_analyzing_request() == "Анализирую запрос…"
+
+
+def test_status_executing_plan():
+    assert "▶ Выполняю план" in status_executing_plan()
+
+
+def test_chat_hint_exit():
+    msg = chat_hint_exit()
+    assert "Интерактивный режим" in msg
+    assert "exit" in msg
+
+
+def test_chat_goodbye():
+    assert "До свидания" in chat_goodbye()
+
+
+def test_approval_prompt():
+    assert "Подтвердить выполнение" in approval_prompt()
+
+
+def test_approval_rejected():
+    assert "План отклонён" in approval_rejected()
+
+
+def test_error_agent_not_implemented():
+    msg = error_agent_not_implemented("foo_agent")
+    assert "foo_agent" in msg
+    assert "еще не реализован" in msg or "ещё не реализован" in msg
+
+
+def test_error_task_execution():
+    assert error_task_execution("boom") == "Ошибка выполнения: boom"
+
+
+def test_error_generic():
+    assert "Не удалось" in error_generic("сделать", "бум")
