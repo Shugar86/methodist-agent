@@ -13,7 +13,5 @@ def root():
 
 def test_approval_dialog_returns_approved(root):
     dialog = ApprovalDialog(root, plan_text="1. Создать документ")
-    # Simulate approval without blocking.
-    dialog._approved = True
-    dialog._close()
+    dialog._approve()
     assert dialog.result is True
