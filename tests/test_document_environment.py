@@ -38,7 +38,9 @@ def test_document_environment_selects_native_driver():
             sandbox=Sandbox(tmpdir),
             drivers=[NativeDriver()],
         )
-        req = DocumentRequest(action="create", doc_type="docx", output_path=str(output), parameters={"title": "Test"})
+        req = DocumentRequest(
+            action="create", doc_type="docx", output_path=str(output), parameters={"title": "Test"}
+        )
         result = env.execute(req)
         assert result.success is True
         assert output.exists()
