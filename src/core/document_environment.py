@@ -32,14 +32,16 @@ class BaseDocumentDriver:
 
 
 class DocumentEnvironment:
-    def __init__(self, sandbox: Sandbox, drivers: Optional[List[BaseDocumentDriver]] = None, event_bus=None):
+    def __init__(
+        self, sandbox: Sandbox, drivers: Optional[List[BaseDocumentDriver]] = None, event_bus=None
+    ):
         self.sandbox = sandbox
         self.drivers = drivers or []
         self.event_bus = event_bus
 
     def execute(self, request: DocumentRequest) -> DocumentResult:
         if request.output_path:
-            self.sandbox.normalize(request.output_path)
+            request.output_path = str(self.sandbox.normalize(request.output_path))
         driver = self._select_driver(request)
         if not driver:
             return DocumentResult(success=False, message="No suitable driver found")
