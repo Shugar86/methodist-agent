@@ -3,7 +3,6 @@ Main CLI entry point for Methodist Agent.
 Uses Typer for command-line interface.
 """
 
-import logging
 import shutil
 import sys
 from pathlib import Path
@@ -42,7 +41,6 @@ app = typer.Typer(
     add_completion=True,
 )
 console = Console()
-logger = logging.getLogger(__name__)
 
 # Global state
 _config: Optional[Config] = None
@@ -176,56 +174,52 @@ def _process_message(user_input: str, orchestrator: Orchestrator, no_approval: b
     """Process a single user message."""
     context_manager = get_context_manager()
 
-    try:
-        # Add user message to context
-        context_manager.add_message("user", user_input)
+    # Add user message to context
+    context_manager.add_message("user", user_input)
 
-        # Create plan
-        with console.status("[bold blue]Анализирую запрос...[/bold blue]"):
-            plan = orchestrator.create_plan(user_input)
+    # Create plan
+    with console.status("[bold blue]Анализирую запрос...[/bold blue]"):
+        plan = orchestrator.create_plan(user_input)
 
-        # Present plan
-        console.print("\n" + orchestrator.present_plan(plan))
+    # Present plan
+    console.print("\n" + orchestrator.present_plan(plan))
 
-        # Approval gate
-        if plan.requires_approval and not no_approval:
-            approval = console.input("\n[bold yellow]Подтвердить выполнение? (y/n):[/bold yellow] ")
-            if approval.lower() not in ["y", "yes", "да", "д"]:
-                console.print("❌ План отклонён.")
-                orchestrator.reject_plan(plan)
-                return
+    # Approval gate
+    if plan.requires_approval and not no_approval:
+        approval = console.input("\n[bold yellow]Подтвердить выполнение? (y/n):[/bold yellow] ")
+        if approval.lower() not in ["y", "yes", "да", "д"]:
+            console.print("❌ План отклонён.")
+            orchestrator.reject_plan(plan)
+            return
 
-        orchestrator.approve_plan(plan)
+    orchestrator.approve_plan(plan)
 
-        # Execute plan
-        console.print("\n[bold green]▶ Выполняю план...[/bold green]\n")
+    # Execute plan
+    console.print("\n[bold green]▶ Выполняю план...[/bold green]\n")
 
-        while not orchestrator.is_plan_complete(plan):
-            task = orchestrator.get_next_task(plan)
-            if not task:
-                break
+    while not orchestrator.is_plan_complete(plan):
+        task = orchestrator.get_next_task(plan)
+        if not task:
+            break
 
-            with console.status(f"[bold blue]{task.description}...[/bold blue]"):
-                result = _execute_task(task)
+        with console.status(f"[bold blue]{task.description}...[/bold blue]"):
+            result = _execute_task(task)
 
-            orchestrator.mark_task_complete(task, result)
+        orchestrator.mark_task_complete(task, result)
 
-            if result:
-                console.print(f"  ✅ {task.description}")
-                if isinstance(result, str) and len(result) < 500:
-                    console.print(f"     [dim]{result}[/dim]")
-            else:
-                console.print(f"  ⚠️ {task.description} — требуется внимание")
+        if result:
+            console.print(f"  ✅ {task.description}")
+            if isinstance(result, str) and len(result) < 500:
+                console.print(f"     [dim]{result}[/dim]")
+        else:
+            console.print(f"  ⚠️ {task.description} — требуется внимание")
 
-        # Show summary
-        console.print("\n" + orchestrator.get_plan_summary(plan))
+    # Show summary
+    console.print("\n" + orchestrator.get_plan_summary(plan))
 
-        # Add assistant response to context
-        summary = orchestrator.get_plan_summary(plan)
-        context_manager.add_message("assistant", summary)
-    except Exception as e:
-        logger.exception("Ошибка при обработке сообщения")
-        console.print(f"[red]{error_generic('обработать сообщение', str(e))}[/red]")
+    # Add assistant response to context
+    summary = orchestrator.get_plan_summary(plan)
+    context_manager.add_message("assistant", summary)
 
 
 def _execute_task(task):
@@ -286,9 +280,11 @@ def create(
         from agents.document_specialist import DocumentSpecialist
         agent = DocumentSpecialist(get_config())
         result = agent.create_from_template(params)
-        console.print(f"[green]{success_document_created(result['path'])}[/green]")
+        if result.get("success") and result.get("path"):
+            console.print(f"[green]{success_document_created(result['path'])}[/green]")
+        else:
+            console.print(f"[red]{error_generic('создать документ', result.get('error', ''))}[/red]")
     except Exception as e:
-        logger.exception("Ошибка при создании документа")
         console.print(f"[red]{error_generic('создать документ', str(e))}[/red]")
 
 
@@ -309,7 +305,6 @@ def adapt(
         result = agent.adapt_document(params)
         console.print(f"[green]{success_document_adapted(result)}[/green]")
     except Exception as e:
-        logger.exception("Ошибка при адаптации документа")
         console.print(f"[red]{error_generic('адаптировать документ', str(e))}[/red]")
 
 
@@ -325,6 +320,11 @@ def search(
         from agents.web_search import WebSearchAgent
         agent = WebSearchAgent(get_config())
         results = agent.search(query, max_results)
+
+        error_rows = [r for r in results if r.get("source") == "error"]
+        if error_rows:
+            console.print(f"[red]{error_generic('выполнить поиск', error_rows[0].get('snippet', ''))}[/red]")
+            return
 
         table = Table(title="Результаты поиска")
         table.add_column("#", style="cyan", width=3)
@@ -343,7 +343,6 @@ def search(
         console.print(table)
         console.print(f"[green]{success_search_results(len(results))}[/green]")
     except Exception as e:
-        logger.exception("Ошибка при поиске")
         console.print(f"[red]{error_generic('выполнить поиск', str(e))}[/red]")
 
 
@@ -362,10 +361,21 @@ def pdf(
         from agents.pdf_reader import PDFReaderAgent
         agent = PDFReaderAgent(get_config())
         result = agent.process(params)
-        output_path = result.get("conversion", {}).get("output_path", input_file)
-        console.print(f"[green]{success_pdf_ready(output_path)}[/green]")
+        if result.get("success"):
+            output_path = result.get("conversion", {}).get("output_path", input_file)
+            console.print(f"[green]{success_pdf_ready(output_path)}[/green]")
+        else:
+            error = (
+                result.get("error")
+                or result.get("metadata_error")
+                or result.get("text_error")
+                or result.get("tables_error")
+                or result.get("ocr_error")
+                or result.get("conversion_error")
+                or "не удалось обработать PDF"
+            )
+            console.print(f"[red]{error_generic('обработать PDF', error)}[/red]")
     except Exception as e:
-        logger.exception("Ошибка при обработке PDF")
         console.print(f"[red]{error_generic('обработать PDF', str(e))}[/red]")
 
 
