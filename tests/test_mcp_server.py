@@ -61,3 +61,14 @@ def test_mcp_prompt_exists():
     result = generate_curriculum(subject="Математика", hours=144)
     assert "Математика" in result
     assert "144" in result
+
+
+def test_mcp_prompt_adapt_to_fgos_exists():
+    from mcp_server.methodist_mcp_server import adapt_to_fgos
+
+    result = adapt_to_fgos(source_path="old.docx", fgos_version="3++")
+    assert "old.docx" in result
+    assert "3++" in result
+
+    result_default = adapt_to_fgos(source_path="old.docx")
+    assert "3++" in result_default
