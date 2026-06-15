@@ -35,6 +35,7 @@ from core.ui_text import (
     info_output_dir,
     info_skills_dir,
     info_templates_dir,
+    onboarding_env_report,
     onboarding_first_step,
     onboarding_welcome,
     progress_adapting_document,
@@ -121,9 +122,17 @@ def print_banner():
 
 @app.command()
 def init(
-    config_path: Optional[str] = typer.Option(None, "--config", "-c", help="Path to config file")
+    config_path: Optional[str] = typer.Option(None, "--config", "-c", help="Path to config file"),
+    check: bool = typer.Option(False, "--check", help="Run environment check only"),
 ):
     """Initialize agent configuration."""
+    from core.environment_check import run_environment_check
+
+    if check:
+        report = run_environment_check()
+        console.print(onboarding_env_report(report.to_user_string()))
+        raise typer.Exit()
+
     try:
         config = load_config(config_path)
 
@@ -144,6 +153,10 @@ def init(
             shutil.copytree(bundled_templates, templates_dir, dirs_exist_ok=True)
 
         console.print(onboarding_welcome())
+        console.print("")
+        report = run_environment_check()
+        console.print(onboarding_env_report(report.to_user_string()))
+        console.print("")
         console.print(onboarding_first_step())
         console.print(info_data_dir(data_dir))
         console.print(info_templates_dir(templates_dir))
@@ -164,6 +177,12 @@ def chat(
 
     orchestrator = get_orchestrator()
     context_manager = get_context_manager()
+
+    if not context_manager._current_session:
+        console.print(onboarding_welcome())
+        console.print("")
+        console.print(onboarding_first_step())
+        console.print("")
 
     # Create session if none exists
     if not context_manager._current_session:
