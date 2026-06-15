@@ -69,6 +69,7 @@ class MethodistWorkspace:
 
     def _show_approval(self, plan) -> None:
         dialog = ApprovalDialog(self.root, plan_text=self.orchestrator.present_plan(plan))
+        self.root.wait_window(dialog)
         if dialog.result:
             self.orchestrator.approve_plan(plan)
             self.chat_panel.add_message("system", "План подтверждён. Выполняю...")
