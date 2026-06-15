@@ -52,6 +52,7 @@ class TrayApp:
         self.output_dir = get_output_dir(config)
         self.icon: Optional[pystray.Icon] = None
         self._stop_event = threading.Event()
+        self._workspace = None
 
         if not _HAS_PYSTRAY:
             raise TrayAppError("Для работы System Tray необходимо установить pystray и PIL: "
@@ -248,6 +249,18 @@ class TrayApp:
                 error_generic("открыть настройки", str(e)),
             )
 
+    def _on_open_workspace(self, icon, item) -> None:
+        """Открыть основное рабочее пространство Methodist Agent."""
+        if not _HAS_TKINTER:
+            self._show_notification("Ошибка", "tkinter не доступен для рабочего пространства")
+            return
+
+        if self._workspace is None:
+            from windows.workspace import MethodistWorkspace
+            self._workspace = MethodistWorkspace(config=self.config)
+
+        self._workspace.show()
+
     def _on_exit(self, icon, item) -> None:
         """Завершить приложение."""
         logger.info("Завершение работы TrayApp")
@@ -308,6 +321,7 @@ class TrayApp:
             pystray.MenuItem("🔍 Поиск", self._on_search),
             pystray.MenuItem("📂 Открыть папку", self._on_open_folder),
             pystray.MenuItem("⚙️ Настройки", self._on_settings),
+            pystray.MenuItem("🖥️ Открыть рабочее пространство", self._on_open_workspace),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("❌ Выход", self._on_exit),
         )
