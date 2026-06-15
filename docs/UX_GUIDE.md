@@ -114,3 +114,12 @@
 - Все тексты в `src/main.py`, `src/windows/tray_app.py`, агентах и skills должны соответствовать этому гиду.
 - Перед изменением UI/UX текста проверяйте по разделам выше.
 - Новые skills и шаблоны документов также должны быть в этом тоне.
+
+## Concrete examples in code
+
+All user-facing strings live in `src/core/ui_text.py`. Examples:
+
+- `error_no_office_fallback()` → "⚠️ Microsoft Office не найден. Переключаюсь на встроенный режим — документ всё равно будет готов."
+- `error_api_key_missing()` → "❌ Не удалось подключиться к языковой модели. Проверьте API-ключ в настройках (~/.methodist-agent/config.yaml) или выберите локальную модель Ollama."
+- `onboarding_welcome()` → "👋 Добро пожаловать в Методист-Агент! ..."
+- `success_document_created(path)` → "✅ Документ готов: <filename>"
