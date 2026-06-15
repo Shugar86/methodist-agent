@@ -166,6 +166,7 @@ def init(
     except Exception as e:
         logger.exception("Failed to initialize agent")
         console.print(error_generic("инициализировать агента", str(e)))
+        raise typer.Exit(code=1)
 
 
 @app.command()
