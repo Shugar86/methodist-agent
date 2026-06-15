@@ -3,6 +3,8 @@ from pathlib import Path
 
 from core.document_environment import BaseDocumentDriver, DocumentRequest, DocumentResult
 
+POWERPOINT_SLIDE_LAYOUT_BLANK = 12
+
 
 class COMDriver(BaseDocumentDriver):
     def supports(self, request: DocumentRequest) -> bool:
@@ -31,7 +33,8 @@ class COMDriver(BaseDocumentDriver):
         app = win32com_client.DispatchEx(app_name)
         try:
             app.Visible = False
-            app.DisplayAlerts = False
+            if request.doc_type in ("docx", "xlsx"):
+                app.DisplayAlerts = False
             title = request.parameters.get("title", "")
             if request.doc_type == "docx":
                 doc = app.Documents.Add()
@@ -47,10 +50,12 @@ class COMDriver(BaseDocumentDriver):
                 wb.Close()
             elif request.doc_type == "pptx":
                 prs = app.Presentations.Add()
-                slide = prs.Slides.Add(1, 12)
+                slide = prs.Slides.Add(1, POWERPOINT_SLIDE_LAYOUT_BLANK)
                 slide.Shapes(1).TextFrame.TextRange.Text = title
                 prs.SaveAs(str(output_path))
                 prs.Close()
+        except Exception as exc:  # noqa: BLE001 - COM failures can vary; report gracefully
+            return DocumentResult(success=False, message=f"COM operation failed: {exc}")
         finally:
             app.Quit()
 
