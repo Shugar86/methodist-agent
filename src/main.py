@@ -57,6 +57,7 @@ from core.ui_text import (
     task_success,
     task_warning,
 )
+from windows.workspace import MethodistWorkspace
 
 logger = logging.getLogger(__name__)
 
@@ -498,6 +499,14 @@ def tray():
         logger.exception("Failed to launch tray")
         console.print(f"[red]❌ Ошибка запуска tray: {e}[/red]")
         console.print("[dim]Убедитесь, что установлены все зависимости Windows[/dim]")
+
+
+@app.command()
+def workspace():
+    """Открыть рабочее пространство Методист-Агента."""
+    console.print("[info]Открываю рабочее пространство...[/info]")
+    ws = MethodistWorkspace()
+    ws.run()
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 
 from core.config import Config, AgentConfig, DocumentsConfig, SkillsConfig
 from core.environment_check import EnvironmentReport, CheckItem
-from src.main import app
+from main import app
 
 runner = CliRunner()
 
@@ -34,7 +34,7 @@ def test_init_check_all_good(tmp_path, monkeypatch):
             CheckItem(name="A", available=True, message="ok"),
         ]
     )
-    with patch("src.main.run_environment_check", return_value=report):
+    with patch("main.run_environment_check", return_value=report):
         result = runner.invoke(app, ["init", "--check"])
     assert result.exit_code == 0
     assert "Проверка окружения" in result.output
@@ -52,7 +52,7 @@ def test_init_check_not_good(tmp_path, monkeypatch):
             ),
         ]
     )
-    with patch("src.main.run_environment_check", return_value=report):
+    with patch("main.run_environment_check", return_value=report):
         result = runner.invoke(app, ["init", "--check"])
     assert result.exit_code == 1
     assert "Проверка окружения" in result.output
@@ -64,8 +64,8 @@ def test_init_onboarding(tmp_path, monkeypatch):
     report = EnvironmentReport(
         items=[CheckItem(name="A", available=True, message="ok")]
     )
-    with patch("src.main.load_config", return_value=config):
-        with patch("src.main.run_environment_check", return_value=report):
+    with patch("main.load_config", return_value=config):
+        with patch("main.run_environment_check", return_value=report):
             result = runner.invoke(app, ["init"])
     assert result.exit_code == 0
     assert "Добро пожаловать" in result.output
@@ -91,10 +91,20 @@ def test_create_curriculum(tmp_path, monkeypatch):
     monkeypatch.setattr(ds, "TEMPLATES_DIR", template_dir)
     monkeypatch.setattr(ds, "OUTPUT_DIR", output_dir)
 
-    with patch("src.main.load_config", return_value=config):
+    with patch("main.load_config", return_value=config):
         result = runner.invoke(
             app,
             ["create", "curriculum", "--subject", "Базы данных", "--hours", "144"],
         )
     assert result.exit_code == 0
     assert "Документ готов" in result.output
+
+
+def test_workspace_command_exists():
+    from typer.testing import CliRunner
+    from main import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["workspace", "--help"])
+    assert result.exit_code == 0
+    assert "workspace" in result.output.lower() or "Открыть" in result.output
