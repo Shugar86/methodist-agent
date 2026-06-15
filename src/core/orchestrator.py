@@ -6,6 +6,7 @@ Inspired by OpenCode's orchestration concept.
 """
 
 import json
+import logging
 import re
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
@@ -15,6 +16,8 @@ from core.config import Config
 from core.model_router import ModelRouter, Message
 from core.context_manager import ContextManager
 from core.context_scout import ContextScout
+
+logger = logging.getLogger(__name__)
 
 
 class TaskType(Enum):
@@ -286,7 +289,7 @@ Respond with a JSON array of tasks. Each task should have:
                 else:
                     plan_data = []
         except Exception as e:
-            print(f"LLM planning failed ({e}), using rule-based plan")
+            logger.warning("LLM planning failed (%s), using rule-based plan", e)
             plan_data = []
 
         # Build tasks
