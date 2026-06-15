@@ -30,8 +30,9 @@ class COMDriver(BaseDocumentDriver):
             "xlsx": "Excel.Application",
             "pptx": "PowerPoint.Application",
         }[request.doc_type]
-        app = win32com_client.DispatchEx(app_name)
+        app = None
         try:
+            app = win32com_client.DispatchEx(app_name)
             app.Visible = False
             if request.doc_type in ("docx", "xlsx"):
                 app.DisplayAlerts = False
@@ -57,6 +58,7 @@ class COMDriver(BaseDocumentDriver):
         except Exception as exc:  # noqa: BLE001 - COM failures can vary; report gracefully
             return DocumentResult(success=False, message=f"COM operation failed: {exc}")
         finally:
-            app.Quit()
+            if app is not None:
+                app.Quit()
 
         return DocumentResult(success=True, output_path=str(output_path), message="Created via COM")
