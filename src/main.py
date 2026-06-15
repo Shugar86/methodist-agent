@@ -3,6 +3,7 @@ Main CLI entry point for Methodist Agent.
 Uses Typer for command-line interface.
 """
 
+import logging
 import shutil
 import sys
 from pathlib import Path
@@ -21,6 +22,19 @@ from core.config import Config, load_config, get_output_dir
 from core.model_router import ModelRouter
 from core.context_manager import ContextManager
 from core.orchestrator import Orchestrator
+from core.ui_text import (
+    error_generic,
+    onboarding_first_step,
+    onboarding_welcome,
+    progress_adapting_document,
+    progress_creating_document,
+    progress_pdf,
+    progress_searching,
+    success_document_adapted,
+    success_document_created,
+    success_pdf_ready,
+    success_search_results,
+)
 
 app = typer.Typer(
     name="methodist-agent",
@@ -28,6 +42,7 @@ app = typer.Typer(
     add_completion=True,
 )
 console = Console()
+logger = logging.getLogger(__name__)
 
 # Global state
 _config: Optional[Config] = None
@@ -78,7 +93,7 @@ def print_banner():
     banner.append("🤖 ", style="bold cyan")
     banner.append("Методист-Агент", style="bold blue")
     banner.append(" v1.0.0\n", style="dim")
-    banner.append("Windows-first AI агент для учебных заведений\n", style="dim")
+    banner.append("Помогаю готовить рабочие программы, ведомости, презентации и отчёты\n", style="dim")
     banner.append("─" * 50, style="dim")
     console.print(Panel(banner, border_style="blue"))
 
@@ -107,7 +122,8 @@ def init(
     if bundled_templates.exists():
         shutil.copytree(bundled_templates, templates_dir, dirs_exist_ok=True)
 
-    console.print("✅ Агент инициализирован!")
+    console.print(onboarding_welcome())
+    console.print(onboarding_first_step())
     console.print(f"📁 Данные: {get_data_dir(config)}")
     console.print(f"📁 Шаблоны: {get_templates_dir(config)}")
     console.print(f"📁 Skills: {get_skills_dir(config)}")
@@ -153,59 +169,63 @@ def chat(
                 console.print("\n👋 До свидания!")
                 break
             except Exception as e:
-                console.print(f"[red]Ошибка: {e}[/red]")
+                console.print(f"[red]{error_generic('обработать сообщение', str(e))}[/red]")
 
 
 def _process_message(user_input: str, orchestrator: Orchestrator, no_approval: bool):
     """Process a single user message."""
     context_manager = get_context_manager()
-    
-    # Add user message to context
-    context_manager.add_message("user", user_input)
-    
-    # Create plan
-    with console.status("[bold blue]Анализирую запрос...[/bold blue]"):
-        plan = orchestrator.create_plan(user_input)
-    
-    # Present plan
-    console.print("\n" + orchestrator.present_plan(plan))
-    
-    # Approval gate
-    if plan.requires_approval and not no_approval:
-        approval = console.input("\n[bold yellow]Подтвердить выполнение? (y/n):[/bold yellow] ")
-        if approval.lower() not in ["y", "yes", "да", "д"]:
-            console.print("❌ План отклонён.")
-            orchestrator.reject_plan(plan)
-            return
-    
-    orchestrator.approve_plan(plan)
-    
-    # Execute plan
-    console.print("\n[bold green]▶ Выполняю план...[/bold green]\n")
-    
-    while not orchestrator.is_plan_complete(plan):
-        task = orchestrator.get_next_task(plan)
-        if not task:
-            break
-        
-        with console.status(f"[bold blue]{task.description}...[/bold blue]"):
-            result = _execute_task(task)
-        
-        orchestrator.mark_task_complete(task, result)
-        
-        if result:
-            console.print(f"  ✅ {task.description}")
-            if isinstance(result, str) and len(result) < 500:
-                console.print(f"     [dim]{result}[/dim]")
-        else:
-            console.print(f"  ⚠️ {task.description} — требуется внимание")
-    
-    # Show summary
-    console.print("\n" + orchestrator.get_plan_summary(plan))
-    
-    # Add assistant response to context
-    summary = orchestrator.get_plan_summary(plan)
-    context_manager.add_message("assistant", summary)
+
+    try:
+        # Add user message to context
+        context_manager.add_message("user", user_input)
+
+        # Create plan
+        with console.status("[bold blue]Анализирую запрос...[/bold blue]"):
+            plan = orchestrator.create_plan(user_input)
+
+        # Present plan
+        console.print("\n" + orchestrator.present_plan(plan))
+
+        # Approval gate
+        if plan.requires_approval and not no_approval:
+            approval = console.input("\n[bold yellow]Подтвердить выполнение? (y/n):[/bold yellow] ")
+            if approval.lower() not in ["y", "yes", "да", "д"]:
+                console.print("❌ План отклонён.")
+                orchestrator.reject_plan(plan)
+                return
+
+        orchestrator.approve_plan(plan)
+
+        # Execute plan
+        console.print("\n[bold green]▶ Выполняю план...[/bold green]\n")
+
+        while not orchestrator.is_plan_complete(plan):
+            task = orchestrator.get_next_task(plan)
+            if not task:
+                break
+
+            with console.status(f"[bold blue]{task.description}...[/bold blue]"):
+                result = _execute_task(task)
+
+            orchestrator.mark_task_complete(task, result)
+
+            if result:
+                console.print(f"  ✅ {task.description}")
+                if isinstance(result, str) and len(result) < 500:
+                    console.print(f"     [dim]{result}[/dim]")
+            else:
+                console.print(f"  ⚠️ {task.description} — требуется внимание")
+
+        # Show summary
+        console.print("\n" + orchestrator.get_plan_summary(plan))
+
+        # Add assistant response to context
+        summary = orchestrator.get_plan_summary(plan)
+        context_manager.add_message("assistant", summary)
+    except Exception as e:
+        logger.exception("Ошибка при обработке сообщения")
+        console.print(f"[red]{error_generic('обработать сообщение', str(e))}[/red]")
 
 
 def _execute_task(task):
@@ -258,17 +278,18 @@ def create(
     hours: Optional[int] = typer.Option(None, "--hours", "-h", help="Total hours"),
 ):
     """Create a document from template."""
-    console.print(f"[bold blue]Создаю документ из шаблона: {template}[/bold blue]")
-    
+    console.print(f"[bold blue]{progress_creating_document(template)}[/bold blue]")
+
     params = {"template_name": template, "output": output, "subject": subject, "hours": hours}
-    
+
     try:
         from agents.document_specialist import DocumentSpecialist
         agent = DocumentSpecialist(get_config())
         result = agent.create_from_template(params)
-        console.print(f"[green]✅ Документ создан: {result}[/green]")
+        console.print(f"[green]{success_document_created(result['path'])}[/green]")
     except Exception as e:
-        console.print(f"[red]❌ Ошибка: {e}[/red]")
+        logger.exception("Ошибка при создании документа")
+        console.print(f"[red]{error_generic('создать документ', str(e))}[/red]")
 
 
 @app.command()
@@ -278,17 +299,18 @@ def adapt(
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
 ):
     """Adapt an existing document to new requirements."""
-    console.print(f"[bold blue]Адаптирую документ: {input_file}[/bold blue]")
-    
+    console.print(f"[bold blue]{progress_adapting_document(input_file)}[/bold blue]")
+
     params = {"input_file": input_file, "template": template, "output": output}
-    
+
     try:
         from agents.adaptation_agent import AdaptationAgent
         agent = AdaptationAgent(get_config())
         result = agent.adapt_document(params)
-        console.print(f"[green]✅ Документ адаптирован: {result}[/green]")
+        console.print(f"[green]{success_document_adapted(result)}[/green]")
     except Exception as e:
-        console.print(f"[red]❌ Ошибка: {e}[/red]")
+        logger.exception("Ошибка при адаптации документа")
+        console.print(f"[red]{error_generic('адаптировать документ', str(e))}[/red]")
 
 
 @app.command()
@@ -297,19 +319,19 @@ def search(
     max_results: int = typer.Option(10, "--max", "-n", help="Maximum results"),
 ):
     """Search the web for methodological materials."""
-    console.print(f"[bold blue]🔍 Поиск: {query}[/bold blue]\n")
-    
+    console.print(f"[bold blue]{progress_searching(query)}[/bold blue]\n")
+
     try:
         from agents.web_search import WebSearchAgent
         agent = WebSearchAgent(get_config())
         results = agent.search(query, max_results)
-        
+
         table = Table(title="Результаты поиска")
         table.add_column("#", style="cyan", width=3)
         table.add_column("Заголовок", style="green")
         table.add_column("URL", style="blue")
         table.add_column("Описание", style="dim")
-        
+
         for i, result in enumerate(results, 1):
             table.add_row(
                 str(i),
@@ -317,10 +339,12 @@ def search(
                 result.get("url", "N/A")[:40],
                 result.get("snippet", "")[:60]
             )
-        
+
         console.print(table)
+        console.print(f"[green]{success_search_results(len(results))}[/green]")
     except Exception as e:
-        console.print(f"[red]❌ Ошибка поиска: {e}[/red]")
+        logger.exception("Ошибка при поиске")
+        console.print(f"[red]{error_generic('выполнить поиск', str(e))}[/red]")
 
 
 @app.command()
@@ -330,17 +354,19 @@ def pdf(
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
 ):
     """Process PDF files."""
-    console.print(f"[bold blue]📄 PDF: {action} — {input_file}[/bold blue]")
-    
+    console.print(f"[bold blue]{progress_pdf(action, input_file)}[/bold blue]")
+
     params = {"action": action, "input_file": input_file, "output": output}
-    
+
     try:
         from agents.pdf_reader import PDFReaderAgent
         agent = PDFReaderAgent(get_config())
         result = agent.process(params)
-        console.print(f"[green]✅ Готово: {result}[/green]")
+        output_path = result.get("conversion", {}).get("output_path", input_file)
+        console.print(f"[green]{success_pdf_ready(output_path)}[/green]")
     except Exception as e:
-        console.print(f"[red]❌ Ошибка: {e}[/red]")
+        logger.exception("Ошибка при обработке PDF")
+        console.print(f"[red]{error_generic('обработать PDF', str(e))}[/red]")
 
 
 @app.command()
