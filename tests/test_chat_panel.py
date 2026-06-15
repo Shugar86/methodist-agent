@@ -20,9 +20,6 @@ def test_chat_panel_adds_message(root):
     assert "user" in panel.get_text()
 
 
-# tests/test_chat_panel.py — append
-
-
 def test_chat_panel_stream_message(root):
     panel = ChatPanel(root)
     panel.start_stream()
@@ -30,4 +27,5 @@ def test_chat_panel_stream_message(root):
     panel.append_stream_chunk(" мир")
     panel.finish_stream()
     text = panel.get_text()
-    assert "Привет мир" in text
+    assert "assistant:" in text
+    assert text.rstrip().endswith("Привет мир")
