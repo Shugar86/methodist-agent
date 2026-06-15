@@ -22,10 +22,14 @@ def _get_env(output_path: Optional[str] = None) -> DocumentEnvironment:
     )
 
 
+def _normalize_path(path: str) -> Path:
+    return _get_env().sandbox.normalize(path)
+
+
 @mcp.tool()
 def list_documents(folder: Optional[str] = None) -> list[str]:
     """List document files in a workspace folder."""
-    root = Path(folder).expanduser() if folder else _project_root()
+    root = _normalize_path(folder) if folder else _project_root()
     if not root.exists():
         return []
     return [str(p) for p in root.rglob("*") if p.is_file()]
@@ -52,7 +56,8 @@ def read_document(path: str) -> str:
     """Read text from a DOCX file."""
     from docx import Document
 
-    doc = Document(path)
+    doc_path = _normalize_path(path)
+    doc = Document(str(doc_path))
     return "\n".join(p.text for p in doc.paragraphs)
 
 
