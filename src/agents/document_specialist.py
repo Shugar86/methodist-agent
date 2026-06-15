@@ -53,8 +53,7 @@ class DocumentSpecialist:
                 drivers=[COMDriver(), NativeDriver()],
             )
         logger.info(
-            f"DocumentSpecialist init: COM={self._com_available}, "
-            f"Native={self._native_available}"
+            f"DocumentSpecialist init: COM={self._com_available}, Native={self._native_available}"
         )
 
     # ------------------------------------------------------------------
@@ -65,6 +64,7 @@ class DocumentSpecialist:
     def _check_com() -> bool:
         try:
             import win32com.client  # noqa: F401
+
             return True
         except Exception:
             return False
@@ -75,6 +75,7 @@ class DocumentSpecialist:
             import docx  # noqa: F401
             import openpyxl  # noqa: F401
             import pptx  # noqa: F401
+
             return True
         except Exception:
             return False
@@ -88,6 +89,7 @@ class DocumentSpecialist:
             raise RuntimeError("COM недоступен")
         if self._word_app is None:
             import win32com.client as win32
+
             self._word_app = win32.Dispatch("Word.Application")
             self._word_app.Visible = True
             logger.info("Word COM запущен")
@@ -98,6 +100,7 @@ class DocumentSpecialist:
             raise RuntimeError("COM недоступен")
         if self._excel_app is None:
             import win32com.client as win32
+
             self._excel_app = win32.Dispatch("Excel.Application")
             self._excel_app.Visible = True
             logger.info("Excel COM запущен")
@@ -108,6 +111,7 @@ class DocumentSpecialist:
             raise RuntimeError("COM недоступен")
         if self._ppt_app is None:
             import win32com.client as win32
+
             self._ppt_app = win32.Dispatch("PowerPoint.Application")
             self._ppt_app.Visible = True
             logger.info("PowerPoint COM запущен")
@@ -472,7 +476,9 @@ class DocumentSpecialist:
                     if slide.Shapes.Count >= 1:
                         slide.Shapes(1).TextFrame.TextRange.Text = title
                     if slide.Shapes.Count >= 2 and content:
-                        slide.Shapes(2).TextFrame.TextRange.Text = "\n".join(str(c) for c in content)
+                        slide.Shapes(2).TextFrame.TextRange.Text = "\n".join(
+                            str(c) for c in content
+                        )
 
                 prs.SaveAs(str(output_path.resolve()))
                 logger.info(f"PPTX создан (COM): {output_path}")
@@ -574,7 +580,9 @@ class DocumentSpecialist:
                     if title is not None and slide.Shapes.Count >= 1:
                         slide.Shapes(1).TextFrame.TextRange.Text = title
                     if content is not None and slide.Shapes.Count >= 2:
-                        slide.Shapes(2).TextFrame.TextRange.Text = "\n".join(str(c) for c in content)
+                        slide.Shapes(2).TextFrame.TextRange.Text = "\n".join(
+                            str(c) for c in content
+                        )
 
                 for slide_data in append_slides:
                     title = slide_data.get("title", "")
@@ -584,7 +592,9 @@ class DocumentSpecialist:
                     if slide.Shapes.Count >= 1:
                         slide.Shapes(1).TextFrame.TextRange.Text = title
                     if slide.Shapes.Count >= 2 and content:
-                        slide.Shapes(2).TextFrame.TextRange.Text = "\n".join(str(c) for c in content)
+                        slide.Shapes(2).TextFrame.TextRange.Text = "\n".join(
+                            str(c) for c in content
+                        )
 
                 prs.Save()
                 logger.info(f"PPTX отредактирован (COM): {file_path}")
@@ -682,7 +692,9 @@ class DocumentSpecialist:
 
         return {"success": False, "error": error_unsupported_format(output_format)}
 
-    def _create_from_template_docx(self, template_path: Path, output_path: Path, replacements: Dict[str, str]) -> Dict[str, Any]:
+    def _create_from_template_docx(
+        self, template_path: Path, output_path: Path, replacements: Dict[str, str]
+    ) -> Dict[str, Any]:
         # COM
         if self._com_available:
             try:
@@ -701,20 +713,25 @@ class DocumentSpecialist:
                 doc.SaveAs(str(output_path.resolve()))
                 return {"success": True, "path": str(output_path), "mode": "com"}
             except Exception as exc:
-                logger.warning(f"COM create_from_template docx не удался: {exc}. Fallback на native.")
+                logger.warning(
+                    f"COM create_from_template docx не удался: {exc}. Fallback на native."
+                )
 
         # Native
         if not self._native_available:
             return {"success": False, "error": error_no_office_fallback()}
 
         from docx import Document
+
         doc = Document(str(template_path))
         for find_text, replace_text in replacements.items():
             find_replace_docx(doc, find_text, replace_text)
         doc.save(str(output_path))
         return {"success": True, "path": str(output_path), "mode": "native"}
 
-    def _create_from_template_xlsx(self, template_path: Path, output_path: Path, replacements: Dict[str, str]) -> Dict[str, Any]:
+    def _create_from_template_xlsx(
+        self, template_path: Path, output_path: Path, replacements: Dict[str, str]
+    ) -> Dict[str, Any]:
         # COM
         if self._com_available:
             try:
@@ -729,13 +746,16 @@ class DocumentSpecialist:
                 wb.SaveAs(str(output_path.resolve()))
                 return {"success": True, "path": str(output_path), "mode": "com"}
             except Exception as exc:
-                logger.warning(f"COM create_from_template xlsx не удался: {exc}. Fallback на native.")
+                logger.warning(
+                    f"COM create_from_template xlsx не удался: {exc}. Fallback на native."
+                )
 
         # Native
         if not self._native_available:
             return {"success": False, "error": error_no_office_fallback()}
 
         from openpyxl import load_workbook
+
         wb = load_workbook(str(template_path))
         for addr, value in replacements.items():
             try:
@@ -745,7 +765,9 @@ class DocumentSpecialist:
         wb.save(str(output_path))
         return {"success": True, "path": str(output_path), "mode": "native"}
 
-    def _create_from_template_pptx(self, template_path: Path, output_path: Path, replacements: Dict[str, str]) -> Dict[str, Any]:
+    def _create_from_template_pptx(
+        self, template_path: Path, output_path: Path, replacements: Dict[str, str]
+    ) -> Dict[str, Any]:
         # COM
         if self._com_available:
             try:
@@ -756,24 +778,33 @@ class DocumentSpecialist:
                         if shape.HasTextFrame:
                             for find_text, replace_text in replacements.items():
                                 if find_text in shape.TextFrame.TextRange.Text:
-                                    shape.TextFrame.TextRange.Text = shape.TextFrame.TextRange.Text.replace(find_text, replace_text)
+                                    shape.TextFrame.TextRange.Text = (
+                                        shape.TextFrame.TextRange.Text.replace(
+                                            find_text, replace_text
+                                        )
+                                    )
                 prs.SaveAs(str(output_path.resolve()))
                 return {"success": True, "path": str(output_path), "mode": "com"}
             except Exception as exc:
-                logger.warning(f"COM create_from_template pptx не удался: {exc}. Fallback на native.")
+                logger.warning(
+                    f"COM create_from_template pptx не удался: {exc}. Fallback на native."
+                )
 
         # Native
         if not self._native_available:
             return {"success": False, "error": error_no_office_fallback()}
 
         from pptx import Presentation
+
         prs = Presentation(str(template_path))
         for slide in prs.slides:
             for shape in slide.shapes:
                 if shape.has_text_frame:
                     for find_text, replace_text in replacements.items():
                         if find_text in shape.text_frame.text:
-                            shape.text_frame.text = shape.text_frame.text.replace(find_text, replace_text)
+                            shape.text_frame.text = shape.text_frame.text.replace(
+                                find_text, replace_text
+                            )
         prs.save(str(output_path))
         return {"success": True, "path": str(output_path), "mode": "native"}
 
