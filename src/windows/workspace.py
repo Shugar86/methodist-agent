@@ -9,6 +9,7 @@ from core.context_manager import ContextManager
 from core.model_router import ModelRouter
 from core.orchestrator import Orchestrator
 from core.event_bus import EventBus
+from core import ui_text
 from windows.chat_panel import ChatPanel
 from windows.quick_actions import QuickActionsPanel
 from windows.file_panel import FilePanel
@@ -27,7 +28,7 @@ class MethodistWorkspace:
             master = None
 
         self.root = master or tk.Tk()
-        self.root.title("Методист-Агент")
+        self.root.title(ui_text.workspace_title())
         self.root.geometry("900x700")
 
         self.config = config or Config()
@@ -72,9 +73,9 @@ class MethodistWorkspace:
         self.root.wait_window(dialog)
         if dialog.result:
             self.orchestrator.approve_plan(plan)
-            self.chat_panel.add_message("system", "План подтверждён. Выполняю...")
+            self.chat_panel.add_message("system", ui_text.workspace_approved())
         else:
-            self.chat_panel.add_message("system", "План отменён.")
+            self.chat_panel.add_message("system", ui_text.workspace_cancelled())
 
     def show(self) -> None:
         self.root.deiconify()

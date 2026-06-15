@@ -143,3 +143,11 @@ def test_error_pdf_processing():
     msg = error_pdf_processing("файл повреждён")
     assert "Не удалось обработать PDF" in msg
     assert "файл повреждён" in msg
+
+
+def test_workspace_strings_exist():
+    from core import ui_text
+    assert callable(getattr(ui_text, "workspace_title", None))
+    assert callable(getattr(ui_text, "workspace_quick_actions", None))
+    assert callable(getattr(ui_text, "workspace_approved", None))
+    assert callable(getattr(ui_text, "workspace_cancelled", None))

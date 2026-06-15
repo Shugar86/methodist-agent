@@ -267,3 +267,27 @@ def task_warning(description: str) -> str:
 
 def error_pdf_processing(reason: str) -> str:
     return f"❌ Не удалось обработать PDF: {reason}"
+
+
+# ------------------------------------------------------------------
+# Workspace
+# ------------------------------------------------------------------
+
+def workspace_title() -> str:
+    return "Методист-Агент"
+
+
+def workspace_quick_actions() -> str:
+    return "Быстрые действия"
+
+
+def workspace_file_panel() -> str:
+    return "Файлы проекта"
+
+
+def workspace_approved() -> str:
+    return "План подтверждён. Выполняю..."
+
+
+def workspace_cancelled() -> str:
+    return "План отменён."
