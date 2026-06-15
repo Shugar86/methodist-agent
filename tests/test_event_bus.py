@@ -1,3 +1,5 @@
+import pytest
+
 from core.event_bus import EventBus, Event
 
 
@@ -14,3 +16,15 @@ def test_event_bus_subscribe_and_publish():
     assert len(received) == 1
     assert received[0].topic == "test_topic"
     assert received[0].payload == {"key": "value"}
+
+
+def test_publish_propagates_handler_exception():
+    bus = EventBus()
+
+    def handler(event: Event) -> None:
+        raise ValueError("boom")
+
+    bus.subscribe("fail", handler)
+
+    with pytest.raises(ValueError, match="boom"):
+        bus.publish("fail")
