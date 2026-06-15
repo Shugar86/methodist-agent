@@ -44,6 +44,8 @@ class NativeDriver(BaseDocumentDriver):
                 slide.shapes.title.text = title
             prs.save(str(output_path))
         else:
-            return DocumentResult(success=False, message=f"Unsupported doc_type: {request.doc_type}")
+            return DocumentResult(
+                success=False, message=f"Unsupported doc_type: {request.doc_type}"
+            )
 
         return DocumentResult(success=True, output_path=str(output_path), message="Created")
