@@ -3,6 +3,7 @@ Main CLI entry point for Methodist Agent.
 Uses Typer for command-line interface.
 """
 
+import logging
 import shutil
 import sys
 from pathlib import Path
@@ -34,6 +35,8 @@ from core.ui_text import (
     success_pdf_ready,
     success_search_results,
 )
+
+logger = logging.getLogger(__name__)
 
 app = typer.Typer(
     name="methodist-agent",
@@ -167,88 +170,92 @@ def chat(
                 console.print("\n👋 До свидания!")
                 break
             except Exception as e:
+                logger.exception("Failed to process message")
                 console.print(f"[red]{error_generic('обработать сообщение', str(e))}[/red]")
 
 
 def _process_message(user_input: str, orchestrator: Orchestrator, no_approval: bool):
     """Process a single user message."""
-    context_manager = get_context_manager()
+    try:
+        context_manager = get_context_manager()
 
-    # Add user message to context
-    context_manager.add_message("user", user_input)
+        # Add user message to context
+        context_manager.add_message("user", user_input)
 
-    # Create plan
-    with console.status("[bold blue]Анализирую запрос...[/bold blue]"):
-        plan = orchestrator.create_plan(user_input)
+        # Create plan
+        with console.status("[bold blue]Анализирую запрос...[/bold blue]"):
+            plan = orchestrator.create_plan(user_input)
 
-    # Present plan
-    console.print("\n" + orchestrator.present_plan(plan))
+        # Present plan
+        console.print("\n" + orchestrator.present_plan(plan))
 
-    # Approval gate
-    if plan.requires_approval and not no_approval:
-        approval = console.input("\n[bold yellow]Подтвердить выполнение? (y/n):[/bold yellow] ")
-        if approval.lower() not in ["y", "yes", "да", "д"]:
-            console.print("❌ План отклонён.")
-            orchestrator.reject_plan(plan)
-            return
+        # Approval gate
+        if plan.requires_approval and not no_approval:
+            approval = console.input("\n[bold yellow]Подтвердить выполнение? (y/n):[/bold yellow] ")
+            if approval.lower() not in ["y", "yes", "да", "д"]:
+                console.print("❌ План отклонён.")
+                orchestrator.reject_plan(plan)
+                return
 
-    orchestrator.approve_plan(plan)
+        orchestrator.approve_plan(plan)
 
-    # Execute plan
-    console.print("\n[bold green]▶ Выполняю план...[/bold green]\n")
+        # Execute plan
+        console.print("\n[bold green]▶ Выполняю план...[/bold green]\n")
 
-    while not orchestrator.is_plan_complete(plan):
-        task = orchestrator.get_next_task(plan)
-        if not task:
-            break
+        while not orchestrator.is_plan_complete(plan):
+            task = orchestrator.get_next_task(plan)
+            if not task:
+                break
 
-        with console.status(f"[bold blue]{task.description}...[/bold blue]"):
-            result = _execute_task(task)
+            with console.status(f"[bold blue]{task.description}...[/bold blue]"):
+                result = _execute_task(task)
 
-        orchestrator.mark_task_complete(task, result)
+            orchestrator.mark_task_complete(task, result)
 
-        if result:
-            console.print(f"  ✅ {task.description}")
-            if isinstance(result, str) and len(result) < 500:
-                console.print(f"     [dim]{result}[/dim]")
-        else:
-            console.print(f"  ⚠️ {task.description} — требуется внимание")
+            if result:
+                console.print(f"  ✅ {task.description}")
+                if isinstance(result, str) and len(result) < 500:
+                    console.print(f"     [dim]{result}[/dim]")
+            else:
+                console.print(f"  ⚠️ {task.description} — требуется внимание")
 
-    # Show summary
-    console.print("\n" + orchestrator.get_plan_summary(plan))
+        # Show summary
+        console.print("\n" + orchestrator.get_plan_summary(plan))
 
-    # Add assistant response to context
-    summary = orchestrator.get_plan_summary(plan)
-    context_manager.add_message("assistant", summary)
+        # Add assistant response to context
+        summary = orchestrator.get_plan_summary(plan)
+        context_manager.add_message("assistant", summary)
+    except Exception as e:
+        logger.exception("Failed to process message")
+        console.print(f"[red]{error_generic('обработать сообщение', str(e))}[/red]")
 
 
 def _execute_task(task):
-    """Execute a task using appropriate specialist."""
-    # This is a simplified version - in production, this would dispatch to actual agents
+    """Execute a task using the appropriate specialist or fall back to LLM."""
     agent_name = task.agent
     params = task.parameters
-    
+
     try:
         if agent_name == "document_specialist":
             from agents.document_specialist import DocumentSpecialist
             agent = DocumentSpecialist(get_config())
             return agent.execute(task.type, params)
-        
+
         elif agent_name == "pdf_reader":
             from agents.pdf_reader import PDFReaderAgent
             agent = PDFReaderAgent(get_config())
             return agent.execute(task.type, params)
-        
+
         elif agent_name == "web_search":
             from agents.web_search import WebSearchAgent
             agent = WebSearchAgent(get_config())
             return agent.execute(task.type, params)
-        
+
         elif agent_name == "adaptation_agent":
             from agents.adaptation_agent import AdaptationAgent
             agent = AdaptationAgent(get_config())
             return agent.execute(task.type, params)
-        
+
         else:
             # General task - use LLM directly
             messages = [
@@ -257,10 +264,12 @@ def _execute_task(task):
             ]
             response = get_model_router().chat(messages)
             return response.content
-    
+
     except ImportError as e:
+        logger.exception("Failed to load agent %s", agent_name)
         return f"Агент {agent_name} ещё не реализован ({e}). Использую LLM..."
     except Exception as e:
+        logger.exception("Failed to execute task")
         return f"Ошибка выполнения: {e}"
 
 
@@ -285,6 +294,7 @@ def create(
         else:
             console.print(f"[red]{error_generic('создать документ', result.get('error', ''))}[/red]")
     except Exception as e:
+        logger.exception("Failed to create document")
         console.print(f"[red]{error_generic('создать документ', str(e))}[/red]")
 
 
@@ -305,6 +315,7 @@ def adapt(
         result = agent.adapt_document(params)
         console.print(f"[green]{success_document_adapted(result)}[/green]")
     except Exception as e:
+        logger.exception("Failed to adapt document")
         console.print(f"[red]{error_generic('адаптировать документ', str(e))}[/red]")
 
 
@@ -320,6 +331,9 @@ def search(
         from agents.web_search import WebSearchAgent
         agent = WebSearchAgent(get_config())
         results = agent.search(query, max_results)
+
+        if not results:
+            results = []
 
         error_rows = [r for r in results if r.get("source") == "error"]
         if error_rows:
@@ -343,6 +357,7 @@ def search(
         console.print(table)
         console.print(f"[green]{success_search_results(len(results))}[/green]")
     except Exception as e:
+        logger.exception("Failed to search")
         console.print(f"[red]{error_generic('выполнить поиск', str(e))}[/red]")
 
 
@@ -376,6 +391,7 @@ def pdf(
             )
             console.print(f"[red]{error_generic('обработать PDF', error)}[/red]")
     except Exception as e:
+        logger.exception("Failed to process PDF")
         console.print(f"[red]{error_generic('обработать PDF', str(e))}[/red]")
 
 
@@ -433,6 +449,7 @@ def tray():
         app = TrayApp(get_config())
         app.run()
     except Exception as e:
+        logger.exception("Failed to launch tray")
         console.print(f"[red]❌ Ошибка запуска tray: {e}[/red]")
         console.print("[dim]Убедитесь, что установлены все зависимости Windows[/dim]")
 
