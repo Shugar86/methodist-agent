@@ -17,7 +17,4 @@ class EventBus:
 
     def publish(self, topic: str, payload: Any = None) -> None:
         for handler in self._subscribers.get(topic, []):
-            try:
-                handler(Event(topic=topic, payload=payload))
-            except Exception:
-                pass
+            handler(Event(topic=topic, payload=payload))
