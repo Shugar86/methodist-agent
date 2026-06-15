@@ -17,15 +17,15 @@ def test_mcp_create_document_tool_exists():
     assert callable(create_document)
 
 
-def test_mcp_create_document_executes():
-    from mcp_server.methodist_mcp_server import create_document
+def test_mcp_create_document_executes(monkeypatch, tmp_path):
+    from mcp_server import methodist_mcp_server
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        output = Path(tmpdir) / "test.docx"
-        result = create_document(
-            doc_type="docx",
-            output_path=str(output),
-            parameters={"title": "MCP Test"},
-        )
-        assert output.exists()
-        assert "created" in result.lower() or "готово" in result.lower()
+    monkeypatch.setattr(methodist_mcp_server, "_project_root", lambda: tmp_path)
+    output = tmp_path / "test.docx"
+    result = methodist_mcp_server.create_document(
+        doc_type="docx",
+        output_path=str(output),
+        parameters={"title": "MCP Test"},
+    )
+    assert output.exists()
+    assert "created" in result.lower() or "готово" in result.lower()

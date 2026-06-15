@@ -16,15 +16,8 @@ def _project_root() -> Path:
 
 
 def _get_env(output_path: Optional[str] = None) -> DocumentEnvironment:
-    root = _project_root()
-    if output_path:
-        target = Path(output_path).expanduser().resolve()
-        try:
-            target.relative_to(root)
-        except ValueError:
-            root = target.parent
     return DocumentEnvironment(
-        sandbox=Sandbox(root),
+        sandbox=Sandbox(_project_root()),
         drivers=[COMDriver(), NativeDriver()],
     )
 
