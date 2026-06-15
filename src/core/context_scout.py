@@ -31,12 +31,14 @@ class ContextScout:
                 if query_lower in skill.description.lower():
                     score += 3
                 if score > 0:
-                    scored.append(ContextItem(
-                        key=key,
-                        source="skill",
-                        content=f"{skill.name}: {skill.description}",
-                        score=score,
-                    ))
+                    scored.append(
+                        ContextItem(
+                            key=key,
+                            source="skill",
+                            content=f"{skill.name}: {skill.description}",
+                            score=score,
+                        )
+                    )
 
         scored.sort(key=lambda x: x.score, reverse=True)
         return scored[:top_k]
