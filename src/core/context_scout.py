@@ -17,6 +17,8 @@ class ContextScout:
         self.skill_registry = skill_registry
 
     def find_relevant(self, query: str, top_k: int = 5) -> List[ContextItem]:
+        if not query or not query.strip():
+            return []
         query_lower = query.lower()
         scored: List[ContextItem] = []
 
