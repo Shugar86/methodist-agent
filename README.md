@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](./pyproject.toml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://docs.astral.sh/ruff/)
-[![LLM: OpenAI · Anthropic](https://img.shields.io/badge/LLM-OpenAI%20·%20Anthropic-412991?logo=openai)](#конфигурация)
+[![LLM: Claude · OpenAI](https://img.shields.io/badge/LLM-Claude%20·%20OpenAI-D97757?logo=anthropic)](#конфигурация)
 [![Windows](https://img.shields.io/badge/Windows-integration-0078D6?logo=windows)](#возможности)
 
 ## Что это
@@ -72,7 +72,7 @@ uv sync                      # или: pip install -r requirements.txt
 
 # 3. Указать ключ LLM-провайдера
 cp .env.example .env
-# Откройте .env и впишите OPENAI_API_KEY (primary по умолчанию)
+# Откройте .env и впишите ANTHROPIC_API_KEY (Claude — primary по умолчанию)
 
 # 4. Инициализировать агента
 uv run python -m src.main init
@@ -136,15 +136,15 @@ agent:
   language: "ru"
 
 models:
-  # По умолчанию (src/core/config.py): primary — OpenAI, fallback — Anthropic.
+  # По умолчанию (src/core/config.py): primary — Anthropic (Claude), fallback — OpenAI.
   primary:
+    provider: "anthropic"
+    model: "claude-opus-4-8"
+    api_key: "${ANTHROPIC_API_KEY}"
+  fallback:
     provider: "openai"
     model: "gpt-4o"
     api_key: "${OPENAI_API_KEY}"
-  fallback:
-    provider: "anthropic"
-    model: "claude-3-5-sonnet"
-    api_key: "${ANTHROPIC_API_KEY}"
 
 windows:
   tray_icon: true
@@ -155,6 +155,14 @@ documents:
   preferred_mode: "com"        # com или native
   output_path: "~/Documents/Методист-Агент"
 ```
+
+## 📍 С чего начать чтение
+
+Чтобы разобраться в проекте за ~15 минут, читай в таком порядке:
+
+1. **`src/main.py`** — CLI: все команды (`chat`, `create`, `search`, `adapt`, `pdf`) и точка входа.
+2. **`src/core/orchestrator.py`** — диспетчер: как запрос превращается в вызовы агентов; рядом `model_router.py` — выбор LLM-провайдера.
+3. **`src/agents/`** — специализированные агенты: `document_specialist`, `web_search`, `pdf_reader`, `adaptation_agent`.
 
 ## Документация
 

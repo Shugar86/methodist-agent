@@ -13,8 +13,8 @@ from pydantic_settings import BaseSettings
 
 class ModelConfig(BaseModel):
     """Configuration for a single LLM provider."""
-    provider: str = "openai"
-    model: str = "gpt-4o"
+    provider: str = "anthropic"
+    model: str = "claude-opus-4-8"
     api_key: Optional[str] = None
     api_base: Optional[str] = None
     temperature: float = 0.7
@@ -78,8 +78,8 @@ class Config(BaseModel):
     """Root configuration model."""
     agent: AgentConfig = Field(default_factory=AgentConfig)
     models: Dict[str, ModelConfig] = Field(default_factory=lambda: {
-        "primary": ModelConfig(provider="openai", model="gpt-4o"),
-        "fallback": ModelConfig(provider="anthropic", model="claude-3-5-sonnet"),
+        "primary": ModelConfig(provider="anthropic", model="claude-opus-4-8"),
+        "fallback": ModelConfig(provider="openai", model="gpt-4o"),
     })
     windows: WindowsConfig = Field(default_factory=WindowsConfig)
     skills: SkillsConfig = Field(default_factory=SkillsConfig)

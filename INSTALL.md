@@ -69,13 +69,13 @@ python -m src.main init
 ```yaml
 models:
   primary:
+    provider: "anthropic"
+    model: "claude-opus-4-8"
+    api_key: "sk-ant-your-anthropic-key-here"
+  fallback:
     provider: "openai"
     model: "gpt-4o"
     api_key: "sk-your-openai-key-here"
-  fallback:
-    provider: "anthropic"
-    model: "claude-3-5-sonnet"
-    api_key: "sk-ant-your-anthropic-key-here"
 ```
 
 Или используйте переменные окружения:
