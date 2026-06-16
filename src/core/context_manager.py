@@ -181,7 +181,7 @@ class ContextManager:
 
     def _to_skill(self, key: str, skill_v2: SkillV2) -> Skill:
         """Convert a SkillV2 from the registry to the public Skill dataclass."""
-        category, name = key.split("/", 1)
+        category, name = (key.split("/", 1) + [""])[:2]
         return Skill(
             name=name,
             category=category,

@@ -3,12 +3,17 @@ from unittest.mock import MagicMock
 from core.context_manager import ContextManager, Skill
 
 
-def test_context_manager_uses_skill_registry(tmp_path):
+def _build_config(tmp_path, *, auto_load: bool = True) -> MagicMock:
     config = MagicMock()
     config.skills.repository = str(tmp_path)
-    config.skills.auto_load = True
+    config.skills.auto_load = auto_load
+    return config
+
+
+def test_context_manager_uses_skill_registry(tmp_path):
+    config = _build_config(tmp_path, auto_load=True)
     cm = ContextManager(config)
-    assert hasattr(cm, "skill_registry")
+    assert cm.skill_registry is not None
 
 
 def test_context_manager_delegates_to_skill_registry(tmp_path):
@@ -20,12 +25,10 @@ def test_context_manager_delegates_to_skill_registry(tmp_path):
         encoding="utf-8",
     )
 
-    config = MagicMock()
-    config.skills.repository = str(tmp_path)
-    config.skills.auto_load = True
+    config = _build_config(tmp_path, auto_load=True)
     cm = ContextManager(config)
 
-    assert hasattr(cm, "_context_scout")
+    assert cm._context_scout is not None
 
     all_skills = cm.get_all_skills()
     assert "test-category/test-skill" in all_skills
@@ -56,17 +59,25 @@ def test_find_skills_returns_empty_for_unknown_query(tmp_path):
         encoding="utf-8",
     )
 
-    config = MagicMock()
-    config.skills.repository = str(tmp_path)
-    config.skills.auto_load = True
+    config = _build_config(tmp_path, auto_load=True)
     cm = ContextManager(config)
 
     assert cm.find_skills("несуществующий запрос") == []
 
 
 def test_get_skill_returns_none_for_missing_skill(tmp_path):
-    config = MagicMock()
-    config.skills.repository = str(tmp_path)
+    config = _build_config(tmp_path, auto_load=True)
     cm = ContextManager(config)
 
     assert cm.get_skill("missing", "missing") is None
+
+
+def test_skills_disabled_when_auto_load_false(tmp_path):
+    config = _build_config(tmp_path, auto_load=False)
+    cm = ContextManager(config)
+
+    assert cm.skill_registry is None
+    assert cm._context_scout is None
+    assert cm.get_all_skills() == {}
+    assert cm.get_skill("cat", "name") is None
+    assert cm.find_skills("anything") == []
