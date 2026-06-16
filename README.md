@@ -169,6 +169,12 @@ documents:
 - [`INSTALL.md`](./INSTALL.md) — подробная установка и настройка.
 - [`docs/DESIGN.md`](./docs/DESIGN.md) — архитектура и проектные решения.
 - [`docs/UX_GUIDE.md`](./docs/UX_GUIDE.md) — продуктовый вайб, тон и правила интерфейса.
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — как участвовать в проекте.
+- [`CHANGELOG.md`](./CHANGELOG.md) — история изменений.
+
+## Участие
+
+Идеи, баг-репорты и PR приветствуются — см. [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Лицензия
 
