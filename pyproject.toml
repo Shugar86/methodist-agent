@@ -66,8 +66,8 @@ dev = [
 methodist-agent = "main:app"
 
 [project.urls]
-Homepage = "https://github.com/methodist-agent/methodist-agent"
-Documentation = "https://methodist-agent.readthedocs.io"
+Homepage = "https://github.com/Shugar86/methodist-agent"
+Documentation = "https://github.com/Shugar86/methodist-agent#readme"
 
 [tool.setuptools.packages.find]
 where = ["src"]

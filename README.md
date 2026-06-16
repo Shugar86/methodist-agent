@@ -1,112 +1,134 @@
 # Methodist Agent
 
-🤖 **Windows-first AI агент для помощи методистам учебных заведений**
+> Спокойный и компетентный помощник, который берёт на себя документную рутину методиста — прямо в его рабочем окружении.
 
-Агент, вдохновлённый архитектурой [OpenCode](https://github.com/opencode-ai/opencode), но реализованный на Python с фокусом на Windows-интеграцию и работу с документами.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](./pyproject.toml)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://docs.astral.sh/ruff/)
+[![LLM: OpenAI · Anthropic](https://img.shields.io/badge/LLM-OpenAI%20·%20Anthropic-412991?logo=openai)](#конфигурация)
+[![Windows](https://img.shields.io/badge/Windows-integration-0078D6?logo=windows)](#возможности)
+
+## Что это
+
+**Methodist Agent** — Windows-first AI-агент для методистов учебных заведений. Он создаёт и переделывает рабочие программы, ведомости, презентации и отчёты, ищет нормативные материалы и автоматизирует Office прямо на рабочем месте — через системный трей, контекстное меню и COM-интеграцию.
+
+Идея проста: методист тратит часы на однотипную возню с документами по меняющимся шаблонам. Агент берёт эту рутину на себя, оставляя человеку решение и контроль. Архитектура вдохновлена [OpenCode](https://github.com/opencode-ai/opencode), но реализована на Python с фокусом на Windows и работу с документами.
+
+### Для кого
+
+- **Методисты вузов и ссузов** — рабочие программы, ведомости, отчёты по ФГОС без ручной возни с шаблонами.
+- **Учебные отделы** — массовая адаптация документов под новые требования.
+- **Преподаватели** — быстрая сборка презентаций и методических материалов.
+
+### Вайб
+
+`calm professional` — спокойный профессионал. Никакой суеты и «вау-ИИ»: агент говорит по делу, всегда показывает, что собирается сделать, и ждёт подтверждения на необратимых действиях. Подробнее — [`docs/UX_GUIDE.md`](./docs/UX_GUIDE.md).
 
 ## Возможности
 
-- 📄 **DOCX** — создание и редактирование Word-документов (учебные программы, отчёты, планы)
-- 📊 **XLSX** — работа с Excel (ведомости, расписания, статистика)
-- 🎯 **PPTX** — создание презентаций и методических материалов
-- 📑 **PDF** — чтение, извлечение текста/таблиц, OCR, конвертация
-- 🔍 **Web Search** — поиск методических материалов и нормативных документов
-- 🔄 **Адаптация** — переделка существующих документов под новые требования
-- 🪟 **Windows Integration** — System Tray, Context Menu, COM-автоматизация Office
+- 📄 **DOCX** — создание и редактирование Word (учебные программы, отчёты, планы).
+- 📊 **XLSX** — ведомости, расписания, статистика.
+- 🎯 **PPTX** — презентации и методические материалы.
+- 📑 **PDF** — чтение, извлечение текста/таблиц, OCR, конвертация.
+- 🔍 **Web Search** — поиск методических и нормативных документов.
+- 🔄 **Адаптация** — переделка готовых документов под новые требования.
+- 🪟 **Windows Integration** — System Tray, контекстное меню, COM-автоматизация Office.
 
 ## Архитектура
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  System Tray│     │    CLI      │     │Context Menu │
+│  System Tray│     │     CLI     │     │Context Menu │
 └──────┬──────┘     └──────┬──────┘     └──────┬──────┘
        │                   │                   │
        └───────────────────┼───────────────────┘
                            ▼
               ┌─────────────────────┐
-              │    Core Engine      │
-              │  (Orchestrator)     │
+              │     Core Engine     │
+              │    (Orchestrator)   │
               └──────────┬──────────┘
                          │
         ┌────────────────┼────────────────┐
         ▼                ▼                ▼
 ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│   Document   │ │   Web Search │ │    PDF       │
-│  Specialist  │ │    Agent     │ │   Reader     │
+│   Document   │ │  Web Search  │ │     PDF      │
+│  Specialist  │ │    Agent     │ │    Reader    │
 └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
-## Установка
+Подробности проектных решений — в [`docs/DESIGN.md`](./docs/DESIGN.md).
+
+## Быстрый старт
+
+> Требуется **Python 3.11+**. Рекомендуется пакетный менеджер [`uv`](https://docs.astral.sh/uv/); подойдёт и обычный `pip`.
 
 ```bash
-# Клонировать репозиторий
-git clone <repo-url>
+# 1. Клонировать репозиторий
+git clone git@github.com:Shugar86/methodist-agent.git
 cd methodist-agent
 
-# Установить зависимости
-pip install -r requirements.txt
+# 2. Установить зависимости
+uv sync                      # или: pip install -r requirements.txt
 
-# Инициализировать агента
-python -m src.main init
+# 3. Указать ключ LLM-провайдера
+cp .env.example .env
+# Откройте .env и впишите OPENAI_API_KEY (primary по умолчанию)
+
+# 4. Инициализировать агента
+uv run python -m src.main init
 ```
 
 ## Использование
 
-### Интерактивный режим
 ```bash
-python -m src.main chat
-```
+# Интерактивный режим
+uv run python -m src.main chat
 
-### Однократные команды
-```bash
 # Создать рабочую программу
-python -m src.main create curriculum --subject "Математика" --hours 144
+uv run python -m src.main create curriculum --subject "Математика" --hours 144
 
 # Поиск методички
-python -m src.main search "рабочая программа математика ФГОС"
+uv run python -m src.main search "рабочая программа математика ФГОС"
 
-# Адаптировать документ
-python -m src.main adapt "old.docx" --template "new_template.docx"
+# Адаптировать документ под новый шаблон
+uv run python -m src.main adapt "old.docx" --template "new_template.docx"
 
-# Работа с PDF
-python -m src.main pdf extract "document.pdf" --output "document.docx"
+# Извлечь содержимое PDF
+uv run python -m src.main pdf extract "document.pdf" --output "document.docx"
+
+# Свернуть в системный трей (Windows)
+uv run python -m src.main tray
 ```
 
-### System Tray
-```bash
-python -m src.main tray
-```
+> Без `uv` те же команды запускаются как `python -m src.main <команда>` внутри активированного виртуального окружения.
 
 ## Структура проекта
 
 ```
 methodist-agent/
 ├── src/
-│   ├── core/              # Core Engine
-│   │   ├── config.py      # Конфигурация
-│   │   ├── model_router.py# LLM routing
-│   │   ├── context_manager.py # Context & Skills
-│   │   └── orchestrator.py    # Диспетчер
-│   ├── agents/            # Specialist Agents
+│   ├── core/                  # Core Engine
+│   │   ├── config.py          # Конфигурация и дефолты провайдеров
+│   │   ├── model_router.py    # Маршрутизация LLM-запросов
+│   │   ├── context_manager.py # Контекст и skills
+│   │   └── orchestrator.py    # Диспетчер задач
+│   ├── agents/                # Специализированные агенты
 │   │   ├── document_specialist.py
 │   │   ├── web_search.py
 │   │   ├── pdf_reader.py
 │   │   └── adaptation_agent.py
-│   ├── windows/           # Windows Integration
-│   │   └── tray_app.py
-│   └── main.py            # CLI
-├── skills/                # Skills Repository
-│   ├── docx-creation/
-│   ├── xlsx-creation/
-│   ├── pptx-creation/
-│   └── ...
-├── templates/             # Document Templates
-└── requirements.txt
+│   ├── windows/               # Windows-интеграция (tray)
+│   └── main.py                # CLI-вход
+├── skills/                    # Репозиторий навыков (docx/xlsx/pptx-creation)
+├── templates/                 # Шаблоны документов
+├── docs/                      # DESIGN, UX_GUIDE, API
+├── pyproject.toml             # Зависимости и метаданные пакета
+└── .env.example               # Шаблон переменных окружения
 ```
 
 ## Конфигурация
 
-Конфигурация хранится в `~/.methodist-agent/config.yaml`:
+Ключи провайдеров берутся из `.env`, остальное — из `~/.methodist-agent/config.yaml`:
 
 ```yaml
 agent:
@@ -114,10 +136,15 @@ agent:
   language: "ru"
 
 models:
+  # По умолчанию (src/core/config.py): primary — OpenAI, fallback — Anthropic.
   primary:
     provider: "openai"
     model: "gpt-4o"
     api_key: "${OPENAI_API_KEY}"
+  fallback:
+    provider: "anthropic"
+    model: "claude-3-5-sonnet"
+    api_key: "${ANTHROPIC_API_KEY}"
 
 windows:
   tray_icon: true
@@ -125,10 +152,16 @@ windows:
   com_automation: true
 
 documents:
-  preferred_mode: "com"  # com или native
+  preferred_mode: "com"        # com или native
   output_path: "~/Documents/Методист-Агент"
 ```
 
+## Документация
+
+- [`INSTALL.md`](./INSTALL.md) — подробная установка и настройка.
+- [`docs/DESIGN.md`](./docs/DESIGN.md) — архитектура и проектные решения.
+- [`docs/UX_GUIDE.md`](./docs/UX_GUIDE.md) — продуктовый вайб, тон и правила интерфейса.
+
 ## Лицензия
 
-MIT
+[MIT](./LICENSE) © 2026 Shugar86
