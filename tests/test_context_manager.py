@@ -6,7 +6,6 @@ from core.context_manager import ContextManager, Skill
 def test_context_manager_uses_skill_registry(tmp_path):
     config = MagicMock()
     config.skills.repository = str(tmp_path)
-    config.skills.auto_load = True
     cm = ContextManager(config)
     assert hasattr(cm, "skill_registry")
 
@@ -22,7 +21,6 @@ def test_context_manager_delegates_to_skill_registry(tmp_path):
 
     config = MagicMock()
     config.skills.repository = str(tmp_path)
-    config.skills.auto_load = True
     cm = ContextManager(config)
 
     assert hasattr(cm, "_context_scout")
@@ -41,3 +39,27 @@ def test_context_manager_delegates_to_skill_registry(tmp_path):
 
     matches = cm.find_skills("test query")
     assert any(s.name == "test-skill" for s in matches)
+
+
+def test_find_skills_returns_empty_for_unknown_query(tmp_path):
+    skill_dir = tmp_path / "test-category" / "test-skill"
+    skill_dir.mkdir(parents=True)
+    skill_file = skill_dir / "SKILL.md"
+    skill_file.write_text(
+        "---\nname: test-skill\ntriggers:\n  - test query\n---\nSkill body content.\n",
+        encoding="utf-8",
+    )
+
+    config = MagicMock()
+    config.skills.repository = str(tmp_path)
+    cm = ContextManager(config)
+
+    assert cm.find_skills("несуществующий запрос") == []
+
+
+def test_get_skill_returns_none_for_missing_skill(tmp_path):
+    config = MagicMock()
+    config.skills.repository = str(tmp_path)
+    cm = ContextManager(config)
+
+    assert cm.get_skill("missing", "missing") is None

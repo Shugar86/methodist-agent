@@ -28,9 +28,9 @@ class ContextScout:
                 for trigger in skill.triggers:
                     if trigger.lower() in query_lower:
                         score += 10
-                if skill.description.lower() in query_lower:
+                if skill.description and skill.description.lower() in query_lower:
                     score += 5
-                if query_lower in skill.description.lower():
+                if skill.description and query_lower in skill.description.lower():
                     score += 3
                 if score > 0:
                     scored.append(

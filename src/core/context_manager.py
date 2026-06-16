@@ -53,7 +53,7 @@ class ContextManager:
 
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize SQLite database."""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
@@ -124,7 +124,7 @@ class ContextManager:
                 return session
         return None
 
-    def save_session(self, session: Optional[Session] = None):
+    def save_session(self, session: Optional[Session] = None) -> None:
         """Save session to database."""
         session = session or self._current_session
         if not session:
@@ -145,7 +145,7 @@ class ContextManager:
             )
             conn.commit()
 
-    def add_message(self, role: str, content: str, metadata: Optional[Dict] = None):
+    def add_message(self, role: str, content: str, metadata: Optional[Dict] = None) -> None:
         """Add a message to current session."""
         if not self._current_session:
             self.create_session()
@@ -182,22 +182,20 @@ class ContextManager:
         return Skill(
             name=name,
             category=category,
-            path=skill_v2.path,
+            path=skill_v2.path.parent,
             triggers=skill_v2.triggers,
-            content=skill_v2.content,
+            content=skill_v2.path.read_text(encoding="utf-8"),
             metadata=skill_v2.metadata,
         )
 
-    def _skill_key_from_path(self, path: Path) -> str:
-        """Derive the registry key (category/name) from a skill file path."""
-        return f"{path.parent.parent.name}/{path.parent.name}"
-
     def find_skills(self, query: str) -> List[Skill]:
-        """Find skills matching query via the SkillRegistry."""
+        """Find skills matching query via the ContextScout."""
+        items = self._context_scout.find_relevant(query, top_k=len(self.skill_registry.catalog))
         results: List[Skill] = []
-        for skill_v2 in self.skill_registry.find_by_trigger(query):
-            key = self._skill_key_from_path(skill_v2.path)
-            results.append(self._to_skill(key, skill_v2))
+        for item in items:
+            skill_v2 = self.skill_registry.get(item.key)
+            if skill_v2:
+                results.append(self._to_skill(item.key, skill_v2))
         return results
 
     def get_skill(self, category: str, name: str) -> Optional[Skill]:
@@ -214,7 +212,7 @@ class ContextManager:
             for key, skill_v2 in self.skill_registry.catalog.items()
         }
 
-    def log_action(self, action: str, details: Optional[str] = None):
+    def log_action(self, action: str, details: Optional[str] = None) -> None:
         """Log an action to context history."""
         if not self._current_session:
             return
