@@ -6,6 +6,7 @@ from core.context_manager import ContextManager, Skill
 def test_context_manager_uses_skill_registry(tmp_path):
     config = MagicMock()
     config.skills.repository = str(tmp_path)
+    config.skills.auto_load = True
     cm = ContextManager(config)
     assert hasattr(cm, "skill_registry")
 
@@ -21,6 +22,7 @@ def test_context_manager_delegates_to_skill_registry(tmp_path):
 
     config = MagicMock()
     config.skills.repository = str(tmp_path)
+    config.skills.auto_load = True
     cm = ContextManager(config)
 
     assert hasattr(cm, "_context_scout")
@@ -32,10 +34,14 @@ def test_context_manager_delegates_to_skill_registry(tmp_path):
     assert skill.category == "test-category"
     assert skill.name == "test-skill"
     assert skill.triggers == ["test query"]
+    assert skill.path.is_dir()
+    assert skill.content.startswith("---")
 
     found = cm.get_skill("test-category", "test-skill")
     assert isinstance(found, Skill)
     assert found.name == "test-skill"
+    assert found.path.is_dir()
+    assert found.content.startswith("---")
 
     matches = cm.find_skills("test query")
     assert any(s.name == "test-skill" for s in matches)
@@ -46,12 +52,13 @@ def test_find_skills_returns_empty_for_unknown_query(tmp_path):
     skill_dir.mkdir(parents=True)
     skill_file = skill_dir / "SKILL.md"
     skill_file.write_text(
-        "---\nname: test-skill\ntriggers:\n  - test query\n---\nSkill body content.\n",
+        "---\nname: test-skill\ndescription: A test skill\ntriggers:\n  - test query\n---\nSkill body content.\n",
         encoding="utf-8",
     )
 
     config = MagicMock()
     config.skills.repository = str(tmp_path)
+    config.skills.auto_load = True
     cm = ContextManager(config)
 
     assert cm.find_skills("несуществующий запрос") == []

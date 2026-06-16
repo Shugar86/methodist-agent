@@ -47,8 +47,11 @@ class ContextManager:
         self.data_dir = get_data_dir(config)
         self.db_path = self.data_dir / "sessions.db"
         self.skills_dir = Path(config.skills.repository).expanduser()
-        self.skill_registry = SkillRegistry(self.skills_dir)
-        self._context_scout = ContextScout(skill_registry=self.skill_registry)
+        self.skill_registry: Optional[SkillRegistry] = None
+        self._context_scout: Optional[ContextScout] = None
+        if config.skills.auto_load:
+            self.skill_registry = SkillRegistry(self.skills_dir)
+            self._context_scout = ContextScout(skill_registry=self.skill_registry)
         self._current_session: Optional[Session] = None
 
         self._init_db()
@@ -190,6 +193,8 @@ class ContextManager:
 
     def find_skills(self, query: str) -> List[Skill]:
         """Find skills matching query via the ContextScout."""
+        if self._context_scout is None or self.skill_registry is None:
+            return []
         items = self._context_scout.find_relevant(query, top_k=len(self.skill_registry.catalog))
         results: List[Skill] = []
         for item in items:
@@ -200,6 +205,8 @@ class ContextManager:
 
     def get_skill(self, category: str, name: str) -> Optional[Skill]:
         """Get a specific skill by category and name."""
+        if self.skill_registry is None:
+            return None
         skill_v2 = self.skill_registry.get(f"{category}/{name}")
         if skill_v2 is None:
             return None
@@ -207,6 +214,8 @@ class ContextManager:
 
     def get_all_skills(self) -> Dict[str, Skill]:
         """Get all loaded skills."""
+        if self.skill_registry is None:
+            return {}
         return {
             key: self._to_skill(key, skill_v2)
             for key, skill_v2 in self.skill_registry.catalog.items()
