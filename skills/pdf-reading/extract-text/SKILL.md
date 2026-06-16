@@ -1,5 +1,6 @@
 ---
 name: extract-text
+description: Извлекает текст, таблицы и метаданные из PDF-документов.
 version: 1.0.0
 triggers:
   - "прочитать pdf"

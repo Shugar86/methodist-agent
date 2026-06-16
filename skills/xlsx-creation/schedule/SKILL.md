@@ -1,5 +1,6 @@
 ---
 name: schedule
+description: Составляет расписание занятий для группы или потока.
 version: 1.0.0
 triggers:
   - "расписание"

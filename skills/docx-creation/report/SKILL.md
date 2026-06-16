@@ -1,5 +1,6 @@
 ---
 name: report
+description: Создаёт методический отчёт кафедры или преподавателя.
 version: 1.0.0
 triggers:
   - "отчёт"

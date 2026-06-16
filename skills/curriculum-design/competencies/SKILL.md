@@ -1,5 +1,6 @@
 ---
 name: competencies
+description: Проектирует компетенции выпускника и матрицу их распределения.
 version: 1.0.0
 triggers:
   - "компетенции"

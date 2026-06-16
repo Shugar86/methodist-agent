@@ -107,3 +107,13 @@ def test_validator_accepts_valid_skill():
         validator = SkillValidator(tmpdir)
         errors = validator.validate_all()
         assert errors == []
+
+
+def test_sample_skills_pass_validation():
+    from pathlib import Path
+    from core.skill_validator import SkillValidator
+
+    skills_dir = Path(__file__).parent.parent / "skills"
+    validator = SkillValidator(skills_dir)
+    errors = validator.validate_all()
+    assert errors == [], f"Skill validation errors: {errors}"

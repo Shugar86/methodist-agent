@@ -1,5 +1,6 @@
 ---
 name: grade-sheet
+description: Формирует ведомость успеваемости студентов в формате Excel.
 version: 1.0.0
 triggers:
   - "ведомость"
